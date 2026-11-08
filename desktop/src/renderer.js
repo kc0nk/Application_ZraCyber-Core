@@ -307,7 +307,14 @@ function renderDevices(state) {
         const detail = makeElement("span", "device-card-meta", `${device.platform} · ${device.model}`);
         const lastSeen = Date.parse(device.lastSeenAt ?? "");
         const connected = Number.isFinite(lastSeen) && Date.now() - lastSeen < 90_000;
-        const badge = makeElement("span", isBlocked ? "device-badge blocked-badge" : "device-badge", isBlocked ? "DIBLOKIR" : connected ? "ONLINE" : "TERDAFTAR");
+        const isDemo = Boolean(device.isDemo || (device.demoKey && device.demoKey.startsWith("zra_demo_")));
+        const badgeLabel = isBlocked ? "DIBLOKIR" : isDemo ? "AKUN DEMO JURI" : connected ? "ONLINE" : "TERDAFTAR";
+        const badge = makeElement("span", isBlocked ? "device-badge blocked-badge" : isDemo ? "device-badge demo-badge" : "device-badge", badgeLabel);
+        if (isDemo) {
+          badge.style.background = "#fef08a";
+          badge.style.color = "#854d0e";
+          badge.style.border = "1px solid #fde047";
+        }
         const address = makeElement("span", "device-card-meta", connected ? "APK mobile tersambung ke Desktop API" : `Tidak tersambung · IP terakhir: ${device.ip || "Unknown"}`);
         heading.append(name, badge);
         content.append(heading, detail, address);
@@ -544,8 +551,11 @@ function renderFleetMap(state) {
     const accuracy = Number(device.location.accuracy ?? 0);
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
 
-    const isRegistered = (currentState.devices ?? (currentState.device ? [currentState.device] : [])).some(d => d.id === device.id);
-    const targetColor = isRegistered ? "#3b82f6" : "#ef4444";
+    const registeredDevice = (currentState.devices ?? (currentState.device ? [currentState.device] : [])).find(d => d.id === device.id);
+    const isDemo = Boolean(device.isDemo || registeredDevice?.isDemo || (registeredDevice?.demoKey && registeredDevice.demoKey.startsWith("zra_demo_")));
+    const isRegistered = Boolean(registeredDevice);
+
+    const targetColor = isDemo ? "#eab308" : isRegistered ? "#3b82f6" : "#ef4444";
 
     let marker = fleetMarkers.get(device.id);
     if (!marker) {
@@ -969,14 +979,25 @@ if (downloadReportBtn) {
       </html>
     `;
 
-    const printWindow = window.open("", "_blank");
-    if (printWindow) {
-      printWindow.document.write(htmlContent);
-      printWindow.document.close();
-      printWindow.focus();
-      setTimeout(() => {
-        printWindow.print();
-      }, 300);
+    if (window.zraDesktop && typeof window.zraDesktop.exportPdfReport === "function") {
+      void (async () => {
+        const res = await window.zraDesktop.exportPdfReport(htmlContent);
+        if (res.success) {
+          alert(`PDF Laporan Audit berhasil disimpan di:\n${res.filePath}`);
+        } else if (res.error && res.error !== "Dibatalkan oleh pengguna.") {
+          alert(`Gagal menyimpan PDF: ${res.error}`);
+        }
+      })();
+    } else {
+      const printWindow = window.open("", "_blank");
+      if (printWindow) {
+        printWindow.document.write(htmlContent);
+        printWindow.document.close();
+        printWindow.focus();
+        setTimeout(() => {
+          printWindow.print();
+        }, 300);
+      }
     }
   });
 }

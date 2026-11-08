@@ -28,6 +28,7 @@ contextBridge.exposeInMainWorld("zraDesktop", {
   getGroqKey: () => ipcRenderer.invoke("groqKey:get"),
   saveGroqKey: (key) => ipcRenderer.invoke("groqKey:save", key),
   chatLlm: (prompt) => ipcRenderer.invoke("llm:chat", prompt),
+  exportPdfReport: (html) => ipcRenderer.invoke("reports:export-pdf", html),
   onMaximizeStateChanged: (callback) => {
     const listener = (_event, maximized) => callback(maximized);
     ipcRenderer.on("window:maximize-state", listener);

@@ -246,10 +246,13 @@ function makeApiServer() {
         const now = new Date().toISOString();
         const devices = config.devices ?? (config.device ? [config.device] : []);
         const existing = devices.find((entry) => entry.id === identity.id);
+        const isDemo = Boolean(presentedToken && (presentedToken.startsWith("zra_demo_") || presentedToken.includes("demo")));
         const device = {
           ...(existing ?? identity),
           ...identity,
           ip,
+          isDemo,
+          demoKey: isDemo ? presentedToken : (existing?.demoKey ?? null),
           firstSeenAt: existing?.firstSeenAt ?? now,
           lastSeenAt: now,
           locationUpdatedAt: identity.location ? now : (existing?.locationUpdatedAt ?? null),
@@ -891,6 +894,35 @@ ipcMain.handle("llm:chat", async (_, prompt) => {
     return data.output || data.aiReport || "Respon kosong.";
   } catch (err) {
     return `Error: ${err.message}`;
+  }
+});
+
+ipcMain.handle("reports:export-pdf", async (_event, htmlContent) => {
+  try {
+    const pdfWin = new BrowserWindow({
+      show: false,
+      webPreferences: { nodeIntegration: false, contextIsolation: true }
+    });
+    await pdfWin.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(htmlContent)}`);
+    const pdfData = await pdfWin.webContents.printToPDF({
+      pageSize: "A4",
+      printBackground: true,
+    });
+    pdfWin.destroy();
+
+    const { filePath } = await dialog.showSaveDialog(windowRef, {
+      title: "Simpan Laporan Audit PDF ZraCore",
+      defaultPath: `ZraCore_Audit_Report_${Date.now()}.pdf`,
+      filters: [{ name: "PDF Files", extensions: ["pdf"] }]
+    });
+
+    if (filePath) {
+      await writeFile(filePath, pdfData);
+      return { success: true, filePath };
+    }
+    return { success: false, error: "Dibatalkan oleh pengguna." };
+  } catch (err) {
+    return { success: false, error: err.message };
   }
 });
 

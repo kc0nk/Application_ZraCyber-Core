@@ -87,7 +87,10 @@ Aplikasi Desktop Controller (Electron / Node.js) berfungsi sebagai pusat komando
 
 2. **Peta Live (Leaflet GPS Live Map)**:
    - Menampilkan posisi geografis real-time seluruh perangkat HP yang terhubung.
-   - **Indikator Warna Otomatis**: Penanda berwarna **Biru** untuk perangkat yang sudah terdaftar resmi, dan berwarna **Merah** untuk perangkat anomali/belum terdaftar.
+   - **Indikator Warna Otomatis 3 Status**: 
+     - **BIRU (`#3b82f6`)**: Perangkat Terdaftar Resmi (*Registered Device*).
+     - **KUNING (`#eab308`)**: Perangkat Akun Demo Juri (*Judge Demo Account*).
+     - **MERAH (`#ef4444`)**: Perangkat Anomali / Belum Terdaftar (*Anomalous Device*).
    - Pembaruan status warna dan koordinat berjalan secara *real-time* tanpa perlu me-restart aplikasi.
 
 3. **Pengelolaan Perangkat & Akses Keamanan (Device Manager)**:
@@ -235,6 +238,29 @@ env -u ANDROID_PREFS_ROOT JAVA_TOOL_OPTIONS="--enable-native-access=ALL-UNNAMED"
 
 ---
 
+## 👥 AKUN DEMO RESMI UNTUK JURI & PENGUJIAN MULTI-HP
+
+Platform ZraCore menyediakan **6 Akun Demo Khusus Juri** yang dapat langsung dipilih dari tab **Profil** aplikasi mobile untuk pengujian instan tanpa perlu mendaftarkan API key manual:
+
+1. 🛡️ **Drs. Zhafran Zky (Lead Auditor)** — *Chief Cyber Security Auditor & Lead Penetration Tester*  
+   - Key: `zra_demo_lead_auditor_2026_key`
+2. 🌐 **Rubby Wirassmara (Web Specialist)** — *Senior Web Security & Bug Bounty Specialist*  
+   - Key: `zra_demo_web_specialist_2026_key`
+3. 📱 **Dr. Dzaky (Mobile Forensic Lead)** — *Android & iOS Binary Reverse Engineer*  
+   - Key: `zra_demo_mobile_forensic_2026_key`
+4. 📂 **Auditor DFIR (Malware Specialist)** — *Digital Forensics & Incident Response Specialist*  
+   - Key: `zra_demo_malware_dfir_2026_key`
+5. 🔍 **Investigator OSINT (Recon Lead)** — *Social Media & Identity Intelligence Analyst*  
+   - Key: `zra_demo_osint_recon_2026_key`
+6. 🖥️ **Judge Infra (Server Inspector)** — *Infrastructure & Cloud Security Inspector*  
+   - Key: `zra_demo_vps_infra_2026_key`
+
+> [!NOTE]
+> **Dukungan Multi-HP Simultan**:  
+> Seluruh 6 Akun Demo juri dapat digunakan oleh **beberapa HP fisik yang berbeda secara bersamaan (*simultaneous multi-device*)** tanpa saling menendang atau memblokir satu sama lain. Setiap perangkat akan secara otomatis muncul di Peta Live Desktop Controller.
+
+---
+
 ## 📁 STRUKTUR PROYEK
 
 ```
@@ -265,4 +291,16 @@ Application/
 
 ---
 
+## ⚖️ PERINGATAN HUKUM & HAK CIPTA (LEGAL COPYRIGHT WARNING)
+
+> [!CAUTION]
+> **DILARANG KERAS MENGGANDAKAN, MENDISTRIBUSIKAN, ATAU MEMPERJUALBELIKAN TANPA IZIN RESMI PEMILIK HAK CIPTA**:  
+> Seluruh kode sumber, arsitektur sistem, rancangan antarmuka, dan dokumentasi proyek **ZraCore Cyber Intelligence Platform** dilindungi secara penuh oleh Undang-Undang Hak Cipta Republik Indonesia. Setiap instansi, organisasi, maupun perorangan yang melakukan penyalinan, pemalsuan, atau penggunaan komersial tanpa izin tertulis dari pemilik hak cipta akan ditindak tegas melalui jalur hukum:
+> 
+> - **Gugatan Perdata (UU Hak Cipta Pasal 95)**: Pemilik hak cipta berhak mengajukan gugatan ganti rugi materiil maupun immateriil ke Pengadilan Niaga atas setiap penggunaan tanpa izin.
+> - **Sanksi Pidana Komersial (UU Hak Cipta Pasal 113)**: Jika proyek/kode sumber ini didistribusikan, diduplikasi, atau dijual secara ilegal untuk tujuan komersial, pelanggar terancam **pidana penjara paling lama 4 (empat) tahun** dan/atau **denda hingga Rp1.000.000.000,- (satu miliar rupiah)**.
+
+---
+
 **ZraCore Cyber Intelligence & Penetration Testing Platform © 2026**  
+*Empowering Cyber Defense & Forensics with Advanced AI Orchestration.*
