@@ -1,0 +1,340 @@
+<!-- Tujuan file: Menyediakan struktur antarmuka HTML untuk aplikasi Desktop. -->
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://*.tile.openstreetmap.org; connect-src 'self'; media-src 'self' data:;"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ZraCyber Core</title>
+    <link rel="stylesheet" href="../node_modules/leaflet/dist/leaflet.css" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="window-bar" id="window-drag-region">
+      <div class="window-title"><span class="window-mark" aria-hidden="true">◆</span><span>ZraCyber Core</span></div>
+      <div class="window-controls" aria-label="Kontrol jendela">
+        <button id="open-settings-dialog" class="window-control" type="button" aria-label="Pengaturan" title="Pengaturan (Tema)">⚙</button>
+        <button id="window-minimize" class="window-control" type="button" aria-label="Minimize" title="Minimize">−</button>
+        <button id="window-maximize" class="window-control" type="button" aria-label="Maximize" title="Maximize">□</button>
+        <button id="window-close" class="window-control close" type="button" aria-label="Close" title="Close">×</button>
+      </div>
+    </header>
+    <main class="shell">
+      <nav class="app-nav" aria-label="Navigasi desktop">
+        <button class="nav-button active" data-view="overview" type="button">Ringkasan</button>
+        <button class="nav-button" data-view="devices" type="button">Devices <span id="device-nav-count">0</span></button>
+        <button class="nav-button" data-view="live-map" type="button">Peta Live</button>
+        <button class="nav-button" data-view="chat" type="button">Chat <span id="chat-nav-count">0</span></button>
+        <button class="nav-button" data-view="log" type="button">Log</button>
+        <button class="nav-button" data-view="llm" type="button">AI LLM Studio</button>
+        <button class="nav-button" data-view="control" type="button">Control</button>
+        <button id="open-settings-nav" class="nav-button" type="button">Pengaturan</button>
+      </nav>
+      <div id="overview-view">
+      <header class="topbar">
+        <div class="brand">
+          <img src="./assets/logo.png" alt="ZraCyber Core Logo" style="width: 38px; height: 38px; border-radius: 10px; object-fit: cover;" />
+          <div>
+            <p class="eyebrow">CONTROL PLANE / DESKTOP</p>
+            <h1>ZraCyber Core</h1>
+          </div>
+        </div>
+        <div class="topbar-actions">
+          <div id="server-status" class="status"><span></span><strong>Memulai API...</strong></div>
+          <button id="open-update-dialog" class="button secondary update-trigger" type="button">⇧ Update APK mobile</button>
+        </div>
+      </header>
+
+      <section class="release-status"><span class="eyebrow">RILIS MOBILE</span><span id="active-release" class="muted">Belum ada update yang dipublikasikan.</span></section>
+
+      <section class="intro">
+        <div>
+          <p class="eyebrow">DESKTOP WORKSPACE</p>
+          <h2>Kontrol audit.</h2>
+        </div>
+      </section>
+
+      <section class="metrics" aria-label="Ringkasan perangkat">
+        <article class="metric"><span>HP aktif</span><strong id="active-device-count">0</strong></article>
+        <article class="metric"><span>Terdaftar</span><strong id="registered-device-count">0</strong></article>
+        <article class="metric"><span>Device anomali</span><strong id="anomalous-device-count-metric">0</strong></article>
+        <article class="metric"><span>Diblokir</span><strong id="blocked-device-count-metric">0</strong></article>
+      </section>
+
+      <section class="grid">
+        <article class="card connection-card">
+          <div class="card-heading">
+            <div>
+              <p class="eyebrow">01 / MOBILE LINK</p>
+              <h3>Desktop API</h3>
+            </div>
+            <span class="icon" aria-hidden="true">⌁</span>
+          </div>
+          <p class="muted">API untuk aplikasi mobile.</p>
+
+          <label for="api-host">Akses jaringan API</label>
+          <select id="api-host"></select>
+          <button id="start-tunnel-btn" class="button secondary" type="button" style="margin-top: 8px; width: 100%;">🌐 Aktifkan Ngrok Online</button>
+          <label for="api-port">Port API</label>
+          <input id="api-port" type="number" min="1024" max="65535" value="4317" />
+          <button id="save-settings" class="button primary">Simpan pengaturan API <span>→</span></button>
+          <p id="settings-notice" class="notice" role="status"></p>
+
+          <div id="lan-addresses" class="address-list"></div>
+          <div class="api-key-section">
+            <div>
+              <p class="eyebrow">KUNCI MOBILE</p>
+              <h4>API key sekali pakai</h4>
+              <p class="muted">Buat kunci untuk menyambungkan satu instalasi HP. Kunci hanya ditampilkan sekali dan akan terikat ke HP pertama yang berhasil terhubung.</p>
+            </div>
+            <button id="create-api-key" class="button secondary" type="button">Buat API key</button>
+            <div id="api-key-result" class="api-key-result" hidden>
+              <label for="api-key-value">Salin kunci ini ke Profil di aplikasi mobile</label>
+              <div class="api-key-copy-row">
+                <input id="api-key-value" type="text" readonly autocomplete="off" spellcheck="false" />
+                <button id="copy-api-key" class="button secondary" type="button">Salin</button>
+              </div>
+              <p id="api-key-expiry" class="hint"></p>
+            </div>
+            <p id="api-key-notice" class="notice" role="status"></p>
+          </div>
+        </article>
+      </section>
+      </div>
+      <section id="chat-view" class="chat-view" hidden>
+        <div class="view-heading">
+          <div><p class="eyebrow">04 / CHAT &amp; VOICE NOTE</p><h2>Pusat Verifikasi Chat &amp; VN.</h2></div>
+          <span id="chat-total-badge" class="device-limit">0 percakapan</span>
+        </div>
+        <div class="chat-container">
+          <aside class="chat-sidebar">
+            <div class="list-heading">
+              <h3>Daftar Percakapan</h3>
+              <span id="chat-sidebar-status">0 device</span>
+            </div>
+            <div id="chat-conversations-list" class="chat-conversations-list"></div>
+          </aside>
+          <section class="chat-main">
+            <div id="chat-empty-state" class="chat-empty-state">
+              <div class="chat-empty-icon">💬</div>
+              <h3>Pilih Percakapan</h3>
+              <p class="muted">Pilih perangkat di daftar sebelah kiri untuk membuka pesan dan Voice Note.</p>
+            </div>
+
+            <div id="chat-active-box" class="chat-active-box" hidden>
+              <header class="chat-header">
+                <div class="chat-header-row">
+                  <div class="chat-title-row">
+                    <h3 id="chat-active-title">Device Name</h3>
+                    <span id="chat-active-badge" class="chat-status-badge badge-anomaly">STATUS</span>
+                  </div>
+                  <button id="chat-send-key-top-btn" class="button primary chat-action-btn" type="button">Kirim API Key</button>
+                </div>
+                <p id="chat-active-subtitle" class="chat-header-info">Model: - · IP: - · ID: -</p>
+              </header>
+
+              <div id="chat-anomaly-alert" class="chat-alert" hidden>
+                <span class="chat-alert-icon">⚠️</span>
+                <div class="chat-alert-text">
+                  <strong>PERANGKAT ANOMALI</strong>
+                  <p>HP ini belum resmi terdaftar. Kirim API Key untuk memverifikasi dan mengizinkan login ke Desktop.</p>
+                </div>
+              </div>
+
+              <div id="chat-messages-scroll" class="chat-messages-scroll">
+                <div id="chat-messages-container" class="chat-messages-container"></div>
+              </div>
+
+              <div class="chat-input-bar">
+                <div class="chat-input-wrapper">
+                  <input id="chat-input-text" type="text" placeholder="Ketik balasan untuk HP ini..." autocomplete="off" />
+                </div>
+                <button id="chat-record-btn" class="chat-send-circle-btn chat-mic-circle-btn" type="button" title="Rekam Voice Note" aria-label="Rekam Voice Note">
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/><path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>
+                </button>
+                <button id="chat-send-msg-btn" class="chat-send-circle-btn" type="button" title="Kirim Pesan" aria-label="Kirim Pesan" hidden>
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+                </button>
+              </div>
+              <div id="chat-recording-indicator" class="chat-recording-indicator" hidden>
+                <button id="chat-cancel-rec-btn" class="chat-rec-delete" type="button" title="Hapus rekaman" aria-label="Hapus rekaman">
+                  <svg viewBox="0 0 24 24" width="19" height="19" fill="currentColor"><path d="M6 7h12l-1 14H7L6 7zm3-4h6l1 2h4v2H4V5h4l1-2z"/></svg>
+                </button>
+                <span id="chat-recording-timer" class="chat-recording-timer">00:00</span>
+                <div class="chat-rec-wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+                <button id="chat-pause-rec-btn" class="chat-rec-pause" type="button" aria-pressed="false">Ⅱ <span>Jeda</span></button>
+                <button id="chat-stop-rec-btn" class="chat-send-circle-btn chat-rec-send" type="button" title="Kirim voice note" aria-label="Kirim voice note">
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+                </button>
+              </div>
+            </div>
+          </section>
+        </div>
+      </section>
+      <section id="log-view" class="log-view" hidden>
+        <div class="view-heading">
+          <div><p class="eyebrow">05 / MULTI-DEVICE AUDIT LOGS &amp; REPORTS</p><h2>Log &amp; laporan gabungan perangkat.</h2></div>
+          <span class="device-limit">Sinkronisasi Multi-HP (HP A, HP B, dll.)</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px; margin-bottom: 14px; gap: 10px;">
+          <p class="muted" style="margin: 0;">Pantau hasil audit (Web, App, File, OSINT) dari semua HP yang terhubung dan unduh laporannya.</p>
+          <div style="display: flex; gap: 8px;">
+            <button id="clear-system-logs-btn" class="button secondary" type="button">Bersihkan Log</button>
+            <button id="download-combined-report-btn" class="button primary" type="button">Unduh Laporan Gabungan (PDF)</button>
+          </div>
+        </div>
+        <div style="background: var(--surface-raised); border: 1px solid var(--border-card); border-radius: 16px; padding: 18px; height: 440px; overflow-y: auto;">
+          <div id="system-logs-container" style="display: grid; gap: 10px;"></div>
+        </div>
+      </section>
+
+      <section id="llm-view" class="llm-view" hidden>
+        <div class="view-heading">
+          <div><p class="eyebrow">06 / AI LLM STUDIO</p><h2>Groq LLM Sandbox Studio.</h2></div>
+          <span class="device-limit">Model: openai/gpt-oss-120b</span>
+        </div>
+        <p class="muted">Konfigurasi Groq API Key dan uji coba prompt langsung ke model <code>openai/gpt-oss-120b</code>.</p>
+
+        <article class="card" style="margin-top: 16px; padding: 20px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <div>
+              <p class="eyebrow" style="margin: 0;">GROQ CLOUD INFERENCE</p>
+              <h3 style="margin: 4px 0 0; color: var(--text-main); font-size: 15px;">Pengaturan Groq API Key</h3>
+            </div>
+            <span class="device-limit">Model: openai/gpt-oss-120b</span>
+          </div>
+          <p class="muted" style="margin-bottom: 12px; font-size: 12px;">Kelola Kunci API Groq Cloud untuk inferensi model <code>openai/gpt-oss-120b</code>.</p>
+          <div style="display: flex; gap: 10px;">
+            <input id="groq-api-key-input" type="password" style="flex: 1; padding: 10px 12px; font-family: monospace;" placeholder="gsk_..." />
+            <button id="groq-api-key-save-btn" class="button primary" type="button">Simpan API Key</button>
+          </div>
+          <p id="groq-api-key-notice" class="notice" role="status" style="margin-top: 8px; font-size: 11px;"></p>
+        </article>
+
+        <!-- Groq LLM Playground Chat -->
+        <article class="card" style="margin-top: 25px; padding: 24px;">
+          <h3 style="margin: 0 0 8px; color: var(--text-main);">Groq LLM (openai/gpt-oss-120b) Sandbox Studio</h3>
+          <p class="muted" style="margin-bottom: 14px;">Uji coba prompt atau pertanyaan langsung ke model Groq LLM.</p>
+          <div style="display: grid; gap: 10px;">
+            <textarea id="llm-prompt-input" rows="3" style="width: 100%; padding: 12px; border: 1px solid var(--input-border); border-radius: 10px; background: var(--input-bg); color: var(--text-main);" placeholder="Ketik prompt ke Groq LLM..."></textarea>
+            <button id="llm-send-btn" class="button primary" type="button" style="width: fit-content;">Kirim ke Groq LLM →</button>
+            <div id="llm-output-box" style="padding: 14px; border-radius: 10px; background: #000000; border: 1px solid var(--border); font-family: monospace; font-size: 12px; color: #34d399; min-height: 120px; max-height: 250px; overflow-y: auto;">
+              Output Groq LLM akan tampil di sini...
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <section id="control-view" class="control-view" hidden>
+        <div class="view-heading">
+          <div><p class="eyebrow">07 / C2 DEVICE CONTROL &amp; LOCKDOWN</p><h2>Remote Lockdown &amp; Force Uninstall.</h2></div>
+          <span class="device-limit">Active Enforcement</span>
+        </div>
+        <p class="muted">Kunci perangkat jarak jauh atau paksakan pencopotan aplikasi (*Force Uninstall / Persistent Redirect*).</p>
+
+        <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 20px;">
+          <article class="card" style="padding: 20px; grid-column: span 2;">
+            <h3 style="margin: 0 0 10px; color: #ef4444;">Device Lockdown &amp; Force Uninstall C2</h3>
+            <p class="muted" style="margin-bottom: 12px; font-size: 11px;">Pilih perangkat target. Saat perintah dikirim, HP target akan terkunci total dan diarahkan ke pengaturan berulang.</p>
+            <div style="display: grid; gap: 12px;">
+              <select id="control-target-device" style="min-height: 44px; padding: 0 12px; border: 1px solid var(--input-border); border-radius: 11px; background: var(--input-bg); color: var(--text-main);">
+                <option value="">Pilih Target Device...</option>
+              </select>
+              <button id="trigger-lockdown-btn" class="button reject" type="button" style="padding: 12px; font-weight: 800;">Jalankan Lockdown &amp; Force Uninstall Paksa</button>
+              <p id="control-status-notice" class="notice" role="status" style="font-size: 11px;"></p>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section id="devices-view" class="devices-view" hidden>
+        <div class="view-heading">
+          <div><p class="eyebrow">03 / DEVICE MONITORING</p><h2>Daftar perangkat.</h2></div>
+          <span class="device-limit">Terdaftar · anomali · diblokir</span>
+        </div>
+        <section class="pending-devices-section">
+          <div class="list-heading"><h3>Device anomali</h3><span id="anomalous-device-count">0</span></div>
+          <p class="muted">Perangkat yang memberi izin lokasi dan menyetujui berbagi, tetapi belum ada di daftar terdaftar. Perangkat ini tidak masuk ke data fitur lain.</p>
+          <div id="anomalous-device-list" class="device-list"></div>
+        </section>
+        <section class="database-actions">
+          <div><h3>Kosongkan isi database</h3><p class="muted">Hapus perangkat, daftar blokir, data update, kredensial lama, dan riwayat. File database serta alamat dan port API tetap dipertahankan.</p></div>
+          <button id="clear-database" class="button reject" type="button">Kosongkan isi database</button>
+        </section>
+        <div class="devices-columns">
+          <section><div class="list-heading"><h3>Device terdaftar</h3><span id="device-count">0</span></div><div id="device-list" class="device-list"></div></section>
+          <section><div class="list-heading"><h3>Block list</h3><span id="blocked-count">0</span></div><div id="blocked-list" class="device-list"></div></section>
+        </div>
+      </section>
+      <section id="live-map-view" class="live-map-view" hidden>
+        <div class="view-heading">
+          <div><p class="eyebrow">03 / DEVICE MONITORING</p><h2>Peta perangkat.</h2></div>
+          <span id="live-map-count" class="device-limit">Memuat perangkat...</span>
+        </div>
+        <p class="muted">APK mobile yang tersambung ke Desktop API dan secara sadar membagikan lokasi GPS.</p>
+        <div class="fleet-link-status"><span id="mobile-link-status">Memeriksa koneksi APK...</span></div>
+        <div id="fleet-map" class="fleet-map" role="application" aria-label="Peta perangkat resmi"></div>
+        <div class="fleet-map-legend"><span class="map-live-dot"></span><span>Perangkat aktif · GPS diizinkan</span><span class="map-attribution-inline">© OpenStreetMap contributors</span></div>
+      </section>
+    </main>
+    <dialog id="device-dialog" class="device-dialog">
+      <div class="dialog-heading"><div><p class="eyebrow">DETAIL DEVICE</p><h3 id="device-detail-name">Mobile device</h3></div><button id="device-dialog-close" class="icon-button dialog-close" type="button" aria-label="Tutup detail" title="Tutup">×</button></div>
+      <div id="device-details" class="device-details"></div>
+      <div id="device-map" class="device-map" hidden></div>
+      <div class="device-actions"><button id="block-device" class="button reject" type="button">Blokir device</button><button id="unblock-device" class="button secondary" type="button">Buka blokir</button></div>
+      <button id="release-device" class="button reject release-button" type="button">Lepas device terdaftar</button>
+    </dialog>
+    <dialog id="update-dialog" class="device-dialog update-dialog">
+      <div class="dialog-heading"><div><p class="eyebrow">MOBILE RELEASE</p><h3>Update APK mobile</h3></div><button id="update-dialog-close" class="icon-button dialog-close" type="button" aria-label="Tutup update" title="Tutup">×</button></div>
+      <p class="muted">Publikasikan APK baru. Perangkat dengan versi lama akan diminta memperbarui sebelum memakai fitur.</p>
+      <div class="update-card">
+        <label for="update-version">Versi aplikasi</label><input id="update-version" type="text" value="1.1.0" placeholder="1.1.0" />
+        <label for="update-version-code">Android versionCode</label><input id="update-version-code" type="number" min="2" value="2" />
+        <label for="update-notes">Catatan update</label><textarea id="update-notes" rows="3" placeholder="Perbaikan keamanan dan fitur"></textarea>
+        <button id="publish-update" class="button primary" type="button">Pilih APK & publikasikan</button>
+        <button id="update-dialog-cancel" class="button secondary" type="button">Batal</button>
+        <p id="update-notice" class="notice" role="status"></p>
+      </div>
+    </dialog>
+    <dialog id="settings-dialog" class="device-dialog settings-dialog">
+      <div class="dialog-heading">
+        <div>
+          <p class="eyebrow">PREFERENSI &amp; TAMPILAN</p>
+          <h3>Pengaturan Desktop</h3>
+        </div>
+        <button id="settings-dialog-close" class="icon-button dialog-close" type="button" aria-label="Tutup pengaturan" title="Tutup">×</button>
+      </div>
+      <div class="settings-content">
+        <div class="settings-group">
+          <label class="settings-group-label">Tema Tampilan</label>
+          <p class="muted">Pilih mode tampilan tema warna untuk aplikasi desktop.</p>
+          <div class="theme-options-grid">
+            <button id="theme-btn-dark" class="button secondary theme-card-btn active" type="button">
+              <span class="theme-icon">🌙</span>
+              <div class="theme-card-text">
+                <strong>Tema Gelap</strong>
+                <span>Mode gelap profesional</span>
+              </div>
+            </button>
+            <button id="theme-btn-light" class="button secondary theme-card-btn" type="button">
+              <span class="theme-icon">☀️</span>
+              <div class="theme-card-text">
+                <strong>Tema Putih</strong>
+                <span>Mode terang (Light UI)</span>
+              </div>
+            </button>
+          </div>
+        </div>
+        <div class="settings-group" style="margin-top: 18px;">
+          <label class="settings-group-label">Preferensi Tombol</label>
+          <p class="muted">Tema Putih memakai kartu putih dan tombol <strong>biru muda</strong>. Tema Gelap memakai kartu gelap dan tombol <strong>biru gelap</strong>.</p>
+        </div>
+      </div>
+    </dialog>
+    <script src="../node_modules/leaflet/dist/leaflet.js"></script>
+    <script src="./renderer.js"></script>
+  </body>
+</html>

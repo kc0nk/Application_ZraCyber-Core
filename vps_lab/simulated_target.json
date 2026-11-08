@@ -1,0 +1,22 @@
+{
+  "hostname": "zracore-ctf-vps-01",
+  "os": "Ubuntu 22.04.3 LTS (Jammy Jellyfish)",
+  "kernel": "5.15.0-88-generic",
+  "ssh": {
+    "port": 22,
+    "version": "OpenSSH_8.9p1 Ubuntu-3ubuntu0.4",
+    "root_password_auth": true,
+    "permit_empty_passwords": false
+  },
+  "webroot": "/var/www/html",
+  "services": [
+    { "name": "ssh", "port": 22, "status": "active" },
+    { "name": "nginx", "port": 80, "status": "active", "version": "Nginx/1.18.0" },
+    { "name": "mysql", "port": 3306, "status": "active", "version": "Ver 8.0.35-0ubuntu0.22.04.1" }
+  ],
+  "anomalies": [
+    { "type": "cron", "path": "/etc/cron.d/backdoor_update", "risk": "Critical" },
+    { "type": "webshell", "path": "/var/www/html/uploads/shell.php", "risk": "Critical" },
+    { "type": "permission", "path": "/var/www/html/uploads/", "chmod": "777" }
+  ]
+}

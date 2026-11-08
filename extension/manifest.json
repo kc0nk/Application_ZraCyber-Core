@@ -1,0 +1,15 @@
+{
+  "manifest_version": 3,
+  "name": "Zra Login Flow Recorder",
+  "version": "0.1.0",
+  "description": "Record login form steps as a secret-free profile for authorized security audits.",
+  "permissions": ["activeTab", "scripting", "storage"],
+  "optional_host_permissions": ["http://*/*", "https://*/*"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Zra Login Flow Recorder",
+    "default_popup": "popup.html"
+  }
+}

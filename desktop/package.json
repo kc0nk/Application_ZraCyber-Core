@@ -1,0 +1,51 @@
+{
+  "name": "zracore-desktop",
+  "version": "1.0.0",
+  "private": true,
+  "description": "ZraCyber Core desktop control plane and local job API",
+  "desktopName": "ZraCyber Core",
+  "main": "src/main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test test/*.node.cjs",
+    "dist:linux": "electron-builder --linux AppImage",
+    "dist:arch": "electron-builder --linux AppImage",
+    "dist:windows": "electron-builder --win nsis"
+  },
+  "devDependencies": {
+    "electron": "^39.2.7",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "com.zracore.desktop",
+    "productName": "ZraCyber Core",
+    "icon": "../assets/images/icon.png",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "src/**/*",
+      "package.json"
+    ],
+    "linux": {
+      "category": "Utility",
+      "syncDesktopName": true,
+      "target": [
+        "AppImage"
+      ]
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  },
+  "dependencies": {
+    "ipaddr.js": "^2.2.0",
+    "leaflet": "^1.9.4"
+  }
+}

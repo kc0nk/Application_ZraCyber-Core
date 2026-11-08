@@ -1,0 +1,20 @@
+/* Tujuan file: Mengatur tampilan popup browser extension. */
+:root { color-scheme: dark; font-family: system-ui, sans-serif; background: #10171d; color: #edf4f7; }
+* { box-sizing: border-box; }
+body { width: 360px; margin: 0; }
+main { padding: 18px; }
+header { display: flex; gap: 11px; align-items: center; margin-bottom: 17px; }
+header strong { display: block; font-size: 15px; }
+header small { display: block; margin-top: 2px; color: #91a4b1; font-size: 11px; }
+.brand-mark { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 11px; background: #a4f4cb; color: #10241c; font-weight: 800; }
+.status { border: 1px solid #29433a; background: #14231e; color: #a4f4cb; padding: 10px 12px; border-radius: 10px; font-size: 12px; font-weight: 650; }
+.hint, .notice { color: #9aabb6; font-size: 11px; line-height: 1.5; }
+.actions { display: flex; gap: 8px; margin: 12px 0 17px; }
+button { border: 0; border-radius: 9px; padding: 10px 12px; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; flex: 1; }
+button:disabled { cursor: not-allowed; opacity: .4; }
+.primary { background: #a4f4cb; color: #10241c; }
+.secondary { background: #202c35; border: 1px solid #344652; color: #dbe6eb; }
+.profile-head { display: flex; justify-content: space-between; align-items: center; font-size: 12px; margin: 5px 0 8px; }
+.profile-head span { color: #9aabb6; font-size: 11px; }
+textarea { width: 100%; height: 158px; resize: vertical; border: 1px solid #344652; border-radius: 9px; background: #0b1116; color: #c4d4dd; padding: 10px; font: 10px/1.45 ui-monospace, monospace; }
+.notice { margin: 3px 0 0; }

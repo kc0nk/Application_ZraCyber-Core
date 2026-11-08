@@ -1,0 +1,32 @@
+<!-- Tujuan file: Menyediakan struktur UI popup browser extension. -->
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Zra Login Flow Recorder</title>
+    <link rel="stylesheet" href="popup.css">
+  </head>
+  <body>
+    <main>
+      <header>
+        <div class="brand-mark">Z</div>
+        <div><strong>Zra Login Flow</strong><small>Recorder · v0.1.0</small></div>
+      </header>
+      <div id="status" class="status">Siap merekam</div>
+      <p class="hint">Rekam hanya alur login milik target yang sudah kalian izinkan.</p>
+      <div class="actions">
+        <button id="start" class="primary">Mulai rekam</button>
+        <button id="stop" class="secondary" disabled>Stop</button>
+      </div>
+      <div class="profile-head"><strong>Profil rekaman</strong><span id="step-count">0 langkah</span></div>
+      <textarea id="profile" readonly spellcheck="false" placeholder="Profil JSON muncul setelah perekaman dihentikan."></textarea>
+      <div class="actions">
+        <button id="copy" class="primary" disabled>Salin profil</button>
+        <button id="clear" class="secondary">Hapus</button>
+      </div>
+      <p id="notice" class="notice">Nilai yang diketik, password, cookie, dan token tidak direkam.</p>
+    </main>
+    <script src="popup.js"></script>
+  </body>
+</html>
