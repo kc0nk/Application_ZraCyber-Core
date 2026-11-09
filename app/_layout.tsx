@@ -124,29 +124,43 @@ function RoutedContent() {
     );
   }
 
+  if (updateRequired) {
+    return (
+      <SafeAreaView style={{ flex: 1, justifyContent: "center", padding: 28, backgroundColor: "#0b1016" }}>
+        <View style={{ gap: 14, padding: 22, borderWidth: 1, borderColor: "#854d0e", borderRadius: 20, backgroundColor: "#15191e" }}>
+          <Text style={{ color: "#fde047", fontSize: 11, fontWeight: "800", letterSpacing: 1.3 }}>PEMBARUAN APLIKASI WAJIB</Text>
+          <Text style={{ color: "#f3f7fa", fontSize: 24, fontWeight: "800" }}>App sudah ada update terbaru.</Text>
+          <Text style={{ color: "#91a0ad", fontSize: 14, lineHeight: 21 }}>
+            {updateInfo ? `Versi ${updateInfo.version} (${updateInfo.notes || "Pembaruan keamanan sistem"}) telah dirilis. Anda wajib mengunduh dan memasang pembaruan APK ini untuk membuka kunci aplikasi.` : "Administrator desktop mewajibkan pembaruan versi APK terbaru."}
+          </Text>
+          {updateProgress !== null ? (
+            <View style={{ gap: 6 }}>
+              <View style={{ height: 8, overflow: "hidden", borderRadius: 8, backgroundColor: "#334155" }}>
+                <View style={{ width: `${Math.max(2, Math.min(100, Math.round(updateProgress * 100)))}%`, height: 8, backgroundColor: "#fde047" }} />
+              </View>
+              <Text style={{ color: "#fde047", fontSize: 12, fontWeight: "700" }}>Mengunduh APK... {Math.round(updateProgress * 100)}%</Text>
+            </View>
+          ) : null}
+          <Pressable
+            onPress={() => void downloadAndInstallUpdate()}
+            disabled={Platform.OS !== "android" || updateProgress !== null}
+            style={{ minHeight: 48, alignItems: "center", justifyContent: "center", borderRadius: 12, backgroundColor: Platform.OS === "android" && updateProgress === null ? "#fde047" : "#64748b" }}
+          >
+            <Text style={{ color: "#0b1016", fontSize: 14, fontWeight: "900" }}>
+              {Platform.OS === "android" ? (updateProgress !== null ? "Sedang Mengunduh..." : "Unduh & Pasang Update APK") : "Fitur update khusus perangkat Android"}
+            </Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <>
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="oauth/callback" />
       </Stack>
-      <Modal visible={updateRequired} transparent animationType="fade" statusBarTranslucent onRequestClose={() => undefined}>
-        <View style={{ flex: 1, justifyContent: "center", padding: 24, backgroundColor: "rgba(0,0,0,0.58)" }}>
-          <View style={{ gap: 12, padding: 20, borderWidth: 1, borderColor: "#F0D58A", borderRadius: 20, backgroundColor: "#FFFDF6", elevation: 18 }}>
-            <View style={{ width: 42, height: 42, alignItems: "center", justifyContent: "center", borderRadius: 13, backgroundColor: "#FFF1C9" }}>
-              <Ionicons name="warning-outline" size={22} color="#9A6700" />
-            </View>
-            <Text style={{ color: "#614800", fontSize: 11, fontWeight: "800", letterSpacing: 1 }}>PEMBARUAN DIPERLUKAN</Text>
-            <Text style={{ color: "#18212A", fontSize: 21, lineHeight: 27, fontWeight: "800" }}>Update aplikasi tersedia</Text>
-            <Text style={{ color: "#58636D", fontSize: 13, lineHeight: 19 }}>{updateInfo ? `Versi ${updateInfo.version}${updateInfo.notes ? ` · ${updateInfo.notes}` : ""}` : "Desktop mewajibkan versi terbaru. Perbarui aplikasi untuk melanjutkan."}</Text>
-            {updateProgress !== null ? <View style={{ gap: 6 }}><View style={{ height: 7, overflow: "hidden", borderRadius: 7, backgroundColor: "#E3E8EC" }}><View style={{ width: `${Math.max(2, Math.min(100, Math.round(updateProgress * 100)))}%`, height: 7, backgroundColor: "#18835F" }} /></View><Text style={{ color: "#58636D", fontSize: 11 }}>Mengunduh {Math.round(updateProgress * 100)}%</Text></View> : null}
-            {connectionMessage && /update|apk/i.test(connectionMessage) ? <Text style={{ color: "#9A6700", fontSize: 11, lineHeight: 16 }}>{connectionMessage}</Text> : null}
-            <Pressable onPress={() => void downloadAndInstallUpdate()} disabled={Platform.OS !== "android" || updateProgress !== null} style={{ minHeight: 46, alignItems: "center", justifyContent: "center", borderRadius: 12, backgroundColor: Platform.OS === "android" && updateProgress === null ? "#18212A" : "#89949D" }}>
-              {updateProgress !== null ? <ActivityIndicator color="#FFFFFF" /> : <Text style={{ color: "#FFFFFF", fontSize: 13, fontWeight: "800" }}>{Platform.OS === "android" ? "Unduh & pasang update" : "Buka aplikasi di Android untuk update"}</Text>}
-            </Pressable>
-          </View>
-        </View>
-      </Modal>
       <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
     </>
   );

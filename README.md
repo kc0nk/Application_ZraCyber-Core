@@ -215,12 +215,12 @@ env -u ANDROID_PREFS_ROOT JAVA_TOOL_OPTIONS="--enable-native-access=ALL-UNNAMED"
 3. Di HP, buka tab **Profil**, tempelkan URL API dan API Key Desktop, lalu klik **Simpan & Hubungkan**.
 
 ### 2. Menguji Modul Website Pentest (Lab Web Lokal):
-1. Jalankan server lab website rentan di terminal laptop:
+1. Jalankan server lab website lokal di terminal laptop:
    ```bash
-   node website_lab/vulnerable_app.cjs
+   node website_lab/server.cjs
    ```
 2. Buka menu **Website Audit** di HP.
-3. Masukkan target URL `http://127.0.0.1:8081`, lalu tekan **Mulai Audit Penetrasi Web**.
+3. Masukkan target URL `http://127.0.0.1:3000` (kredensial demo: `labuser` / `lab-only-change-me`), lalu tekan **Mulai Audit Penetrasi Web**.
 
 ### 3. Menguji Modul VPS & Server Security (Lab VPS Lokal):
 1. Jalankan server simulasi lab VPS di terminal laptop:
@@ -235,6 +235,11 @@ env -u ANDROID_PREFS_ROOT JAVA_TOOL_OPTIONS="--enable-native-access=ALL-UNNAMED"
 1. Buka menu **OSINT Social Media** di HP.
 2. Masukkan **Nama Lengkap** (*misal: `RUBBY WIRASSMARA`*) atau **Username** (*misal: `@zhafran`*).
 3. Tekan **Mulai Lacak Target** untuk melihat sintesis intelijen AI dan 10+ tautan profil media sosial.
+
+### 5. Menguji Modul File & Malware Analysis (File Lab Lokal):
+1. Buka menu **File & Malware** di HP.
+2. Ketuk **Pilih Berkas Artefak**, lalu pilih sampel `suspicious_invoice.pdf` dari direktori `file_lab/`.
+3. Tekan **Mulai Pemindaian Malware** untuk melihat laporan entropi, ekstraksi string, dan deteksi skrip berbahaya.
 
 ---
 
@@ -279,12 +284,20 @@ Application/
 │   │   ├── main.cjs          # Electron Main Process & IPC Handlers
 │   │   ├── renderer.js       # Desktop UI Logic & Live Map Leaflet
 │   │   └── index.html        # Dasbor Desktop UI
-├── website_lab/              # Lab Simulasi Website Rentan (SQLi, XSS, .env)
-│   ├── vulnerable_app.cjs    # Server Web Target Simulasi Rentan
+├── website_lab/              # Lab Simulasi Website Demo (Auth, CSRF, CSP)
+│   ├── server.cjs            # Server Web Target Lab Lokal (Port 3000)
+│   ├── package.json          # Konfigurasi dependensi lab
+│   ├── Dockerfile            # Konfigurasi container lab
+│   ├── .env.example          # Contoh variabel lingkungan
+│   ├── styles.css            # Styling halaman lab
 │   └── README.md             # Panduan Pengujian Web Lab
 ├── vps_lab/                  # Lab Simulasi VPS Lokal
 │   ├── mock_vps_server.cjs   # Server Target Simulasi VPS
-│   └── simulated_target.json # Konfigurasi Target Rentan
+│   ├── simulated_target.json # Konfigurasi Target Rentan
+│   └── README.md             # Panduan Pengujian VPS Lab
+├── file_lab/                 # Lab Simulasi Malware File (Suspicious PDF)
+│   ├── suspicious_invoice.pdf# Berkas Sampel PDF Berisi Simulasi Webshell
+│   └── README.md             # Panduan Pengujian File Lab
 ├── android/                  # Proyek Native Android (Gradle)
 └── README.md                 # Dokumentasi Resmi Proyek
 ```

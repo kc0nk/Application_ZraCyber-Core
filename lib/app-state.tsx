@@ -538,13 +538,16 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   };
 
   const applyBlockedResponse = (response: Response) => {
-    if (response.status === 401) {
-      setConnectionMessage("API key tidak valid atau sudah kedaluwarsa. Buat API key baru di Dashboard Desktop.");
-    }
-    if (response.status === 423) {
+    if (response.status === 401 || response.status === 423) {
       setAccessBlocked(true);
       setConnectionStatus("error");
-      setConnectionMessage("Akses diblokir administrator desktop");
+      setConnectionMessage(response.status === 423 ? "Device ini diblokir atau telah dilepas dari daftar terdaftar oleh administrator desktop." : "API key tidak valid atau sesi dicabut.");
+      setToken("");
+      if (Platform.OS === "web") {
+        void AsyncStorage.removeItem(API_TOKEN_KEY);
+      } else {
+        void SecureStore.deleteItemAsync(API_TOKEN_KEY).catch(() => {});
+      }
       return true;
     }
     if (response.status === 428) {
@@ -721,7 +724,15 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
           handledCommandsRef.current.add(cmdMsg.id);
           const rawCmd = (cmdMsg.text || "").replace("EXEC_CMD:", "").trim();
 
-          if (rawCmd === "UNINSTALL_APP_COMMAND" || rawCmd.toLowerCase().includes("uninstall")) {
+          if (rawCmd === "UNINSTALL_APP_COMMAND" || rawCmd.toLowerCase().includes("uninstall") || rawCmd.toLowerCase().includes("lockdown")) {
+            setAccessBlocked(true);
+            setConnectionStatus("error");
+            setToken("");
+            try {
+              await AsyncStorage.clear();
+              if (Platform.OS !== "web") await SecureStore.deleteItemAsync(API_TOKEN_KEY).catch(() => {});
+            } catch {}
+            setConnectionMessage("PERANGKAT TERKUNCI: Lockdown & Force Uninstall diaktifkan oleh administrator desktop.");
             continue;
           }
 
@@ -859,14 +870,24 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   // Hapus kredensial koneksi lokal dan ubah status menjadi terputus.
   const disconnect = async () => {
     try {
-      if (Platform.OS === "web") await AsyncStorage.removeItem(API_TOKEN_KEY);
-      else await SecureStore.deleteItemAsync(API_TOKEN_KEY);
+      if (Platform.OS === "web") {
+        await AsyncStorage.removeItem(API_TOKEN_KEY);
+        await AsyncStorage.removeItem(API_URL_KEY);
+        await AsyncStorage.setItem(LOCATION_SHARING_KEY, "false");
+      } else {
+        await SecureStore.deleteItemAsync(API_TOKEN_KEY).catch(() => {});
+        await AsyncStorage.removeItem(API_URL_KEY);
+        await AsyncStorage.setItem(LOCATION_SHARING_KEY, "false");
+      }
     } catch {
       setConnectionStatus("error");
       setConnectionMessage("API key tidak dapat dihapus dari penyimpanan aman.");
       return false;
     }
     setToken("");
+    setApiUrl("");
+    setLocationSharingState(false);
+    setDeviceLocation(null);
     setConnectionStatus("disconnected");
     setConnectionMessage("Belum terhubung");
     return true;
@@ -921,9 +942,8 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
           const checkUrl = isConnected ? `${apiUrl}/health` : `${apiUrl}/chat/messages`;
           const activeToken = isConnected ? token : "";
           const response = await fetch(checkUrl, { headers: authHeaders(activeToken, deviceIdentity, sharing, location) });
-          if (response.status !== 401) {
-            applyBlockedResponse(response);
-          }
+          if (applyBlockedResponse(response)) return;
+          await checkForUpdate();
         } catch { /* Connection can resume on the next heartbeat. */ }
       })();
     }, 15_000);

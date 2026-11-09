@@ -1493,6 +1493,35 @@ function createApiServer({
     // ========================================================================
     // TOOLS_OSINT API | POST /tools/osint
     // ========================================================================
+    async function verifySocialMediaPresence(username) {
+      const targetPlatforms = [
+        { name: "GitHub", url: `https://github.com/${username}` },
+        { name: "Instagram", url: `https://www.instagram.com/${username}/` },
+        { name: "Twitter / X", url: `https://x.com/${username}` },
+        { name: "Threads", url: `https://www.threads.net/@${username}` }
+      ];
+
+      let activeProfiles = [];
+      for (const platform of targetPlatforms) {
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 3500);
+          const response = await fetch(platform.url, {
+            method: "GET",
+            headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) ZraCore-OSINT-Verifier/3.0" },
+            signal: controller.signal
+          });
+          clearTimeout(timeoutId);
+
+          if (response.status === 200 || response.status === 302 || response.status === 301) {
+            activeProfiles.push({ title: `${platform.name} (AKTIF & VALID)`, url: platform.url });
+          }
+        } catch (e) {
+          // Ignore
+        }
+      }
+      return activeProfiles;
+    }
     if (pathname === "/tools/osint" && request.method === "POST") {
       try {
         const body = await readJson(request, 32 * 1024 * 1024);
@@ -1543,7 +1572,7 @@ Berikan jawaban dalam format JSON mentah tanpa markdown (\`\`\`) yang berisi obj
           body: JSON.stringify({
             model: "openai/gpt-oss-120b",
             messages: [{ role: "user", content: osintPrompt }],
-            temperature: 0.4,
+            temperature: 0.0,
             max_tokens: 2048,
           }),
           signal: AbortSignal.timeout(30_000),
@@ -1587,13 +1616,23 @@ Berikan jawaban dalam format JSON mentah tanpa markdown (\`\`\`) yang berisi obj
           { title: `Google Images Exact Match`, url: `https://www.google.com/search?tbm=isch&q=${encodeURIComponent('"' + cleanTarget + '"')}` }
         ];
 
+        const livePresence = isUsername ? await verifySocialMediaPresence(cleanTarget) : [];
         const defaultMatches = isUsername ? usernameMatches : nameMatches;
 
-        const matches = (parsed && Array.isArray(parsed.social_media_matches) && parsed.social_media_matches.length > 0)
+        const baseMatches = (parsed && Array.isArray(parsed.social_media_matches) && parsed.social_media_matches.length > 0)
           ? parsed.social_media_matches
           : (parsed && Array.isArray(parsed.google_search_matches) && parsed.google_search_matches.length > 0)
           ? parsed.google_search_matches
           : defaultMatches;
+
+        const seenUrls = new Set();
+        const matches = [];
+        for (const p of [...livePresence, ...baseMatches]) {
+          if (!seenUrls.has(p.url)) {
+            seenUrls.add(p.url);
+            matches.push(p);
+          }
+        }
 
         sendJson(response, 200, {
           success: true,

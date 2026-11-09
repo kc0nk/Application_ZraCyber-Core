@@ -282,21 +282,55 @@ function renderDevices(state) {
   const list = document.querySelector("#device-list");
   const blockedDevices = state.blockedDevices ?? [];
 
+  const demoDevices = devices.filter((d) => d.isDemo || (d.demoKey && d.demoKey.startsWith("zra_demo_")));
+  const regDevices = devices.filter((d) => !d.isDemo && !(d.demoKey && d.demoKey.startsWith("zra_demo_")));
+
   const navCountEl = document.querySelector("#device-nav-count");
   if (navCountEl) navCountEl.textContent = String(devices.length + anomalousDevices.length);
 
   const devCountEl = document.querySelector("#device-count");
-  if (devCountEl) devCountEl.textContent = `${devices.length} device`;
+  if (devCountEl) devCountEl.textContent = `${regDevices.length} terdaftar`;
 
   const blockCountEl = document.querySelector("#blocked-count");
   if (blockCountEl) blockCountEl.textContent = String(blockedDevices.length);
 
+  const demoList = document.querySelector("#demo-device-list");
+  const demoCountEl = document.querySelector("#demo-device-count");
+  if (demoCountEl) demoCountEl.textContent = String(demoDevices.length);
+  if (demoList) {
+    demoList.replaceChildren();
+    if (!demoDevices.length) {
+      demoList.append(makeElement("div", "empty device-empty", "Belum ada akun demo juri yang tersambung."));
+    } else {
+      for (const device of demoDevices) {
+        const isBlocked = blockedDevices.some((item) => item.id === device.id);
+        const card = makeElement("button", "device-card");
+        card.type = "button";
+        const icon = makeElement("span", "device-icon", device.platform === "ios" ? "●" : "▣");
+        const content = makeElement("span", "device-card-content");
+        const heading = makeElement("span", "device-card-heading");
+        const name = makeElement("strong", "device-name", device.name || `${device.manufacturer} ${device.model}`);
+        const detail = makeElement("span", "device-card-meta", `${device.platform} · ${device.model}`);
+        const badge = makeElement("span", "device-badge", "AKUN DEMO JURI");
+        badge.style.background = "#fef08a";
+        badge.style.color = "#854d0e";
+        badge.style.border = "1px solid #fde047";
+        const address = makeElement("span", "device-card-meta", `Terhubung via Demo Key · IP: ${device.ip || "Unknown"}`);
+        heading.append(name, badge);
+        content.append(heading, detail, address);
+        card.append(icon, content, makeElement("span", "device-chevron", "›"));
+        card.addEventListener("click", () => showDeviceDetails(device, isBlocked));
+        demoList.append(card);
+      }
+    }
+  }
+
   if (list) {
     list.replaceChildren();
-    if (!devices.length) {
-      list.append(makeElement("div", "empty device-empty", "Belum ada device terdaftar."));
+    if (!regDevices.length) {
+      list.append(makeElement("div", "empty device-empty", "Belum ada device terdaftar biasa."));
     } else {
-      for (const device of devices) {
+      for (const device of regDevices) {
         const isBlocked = blockedDevices.some((item) => item.id === device.id);
         const card = makeElement("button", "device-card");
         card.type = "button";
@@ -307,14 +341,7 @@ function renderDevices(state) {
         const detail = makeElement("span", "device-card-meta", `${device.platform} · ${device.model}`);
         const lastSeen = Date.parse(device.lastSeenAt ?? "");
         const connected = Number.isFinite(lastSeen) && Date.now() - lastSeen < 90_000;
-        const isDemo = Boolean(device.isDemo || (device.demoKey && device.demoKey.startsWith("zra_demo_")));
-        const badgeLabel = isBlocked ? "DIBLOKIR" : isDemo ? "AKUN DEMO JURI" : connected ? "ONLINE" : "TERDAFTAR";
-        const badge = makeElement("span", isBlocked ? "device-badge blocked-badge" : isDemo ? "device-badge demo-badge" : "device-badge", badgeLabel);
-        if (isDemo) {
-          badge.style.background = "#fef08a";
-          badge.style.color = "#854d0e";
-          badge.style.border = "1px solid #fde047";
-        }
+        const badge = makeElement("span", isBlocked ? "device-badge blocked-badge" : "device-badge", isBlocked ? "DIBLOKIR" : connected ? "ONLINE" : "TERDAFTAR");
         const address = makeElement("span", "device-card-meta", connected ? "APK mobile tersambung ke Desktop API" : `Tidak tersambung · IP terakhir: ${device.ip || "Unknown"}`);
         heading.append(name, badge);
         content.append(heading, detail, address);
@@ -1135,15 +1162,24 @@ function renderChat(state) {
   for (const id of deviceIds) {
     const isReg = devices.some((d) => d.id === id);
     const dev = devices.find((d) => d.id === id) || anomalousDevices.find((d) => d.id === id);
+    const isDemo = Boolean(dev?.isDemo || (dev?.demoKey && dev.demoKey.startsWith("zra_demo_")));
+    const badgeLabel = isDemo ? "AKUN DEMO JURI" : isReg ? "TERDAFTAR" : "ANOMALI";
+    const badgeClass = isDemo ? "badge-demo" : isReg ? "badge-registered" : "badge-anomaly";
+
     const msgs = conversationMap.get(id) ?? [];
     const last = msgs[msgs.length - 1];
     const card = makeElement("button", `conv-card ${id === activeChatDeviceId ? "active" : ""}`);
     card.type = "button";
 
     const top = makeElement("div", "conv-top-row", "", { display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" });
-    top.append(makeElement("span", "conv-title", isReg ? `Device ${dev?.name || id.slice(0, 8)}` : "Chat Anomali"));
+    top.append(makeElement("span", "conv-title", isReg || isDemo ? `Device ${dev?.name || id.slice(0, 8)}` : "Chat Anomali"));
 
-    const badgeSpan = makeElement("span", `chat-status-badge ${isReg ? "badge-registered" : "badge-anomaly"}`, isReg ? "TERDAFTAR" : "ANOMALI");
+    const badgeSpan = makeElement("span", `chat-status-badge ${badgeClass}`, badgeLabel);
+    if (isDemo) {
+      badgeSpan.style.background = "#fef08a";
+      badgeSpan.style.color = "#854d0e";
+      badgeSpan.style.border = "1px solid #fde047";
+    }
     const delChatBtn = makeElement("button", "button reject small", "Hapus");
     delChatBtn.style.marginLeft = "12px";
     delChatBtn.style.padding = "2px 8px";
@@ -1182,6 +1218,7 @@ function renderChat(state) {
 
   const isReg = devices.some((d) => d.id === activeChatDeviceId);
   const dev = devices.find((d) => d.id === activeChatDeviceId) || anomalousDevices.find((d) => d.id === activeChatDeviceId);
+  const isDemo = Boolean(dev?.isDemo || (dev?.demoKey && dev?.demoKey.startsWith("zra_demo_")));
 
   const titleEl = document.querySelector("#chat-active-title");
   const badgeEl = document.querySelector("#chat-active-badge");
@@ -1189,11 +1226,16 @@ function renderChat(state) {
   const alertEl = document.querySelector("#chat-anomaly-alert");
 
   if (titleEl && badgeEl) {
-    const chatName = isReg ? `Device ${dev?.name || activeChatDeviceId.slice(0, 8)}` : "Chat Anomali";
+    const chatName = isReg || isDemo ? `Device ${dev?.name || activeChatDeviceId.slice(0, 8)}` : "Chat Anomali";
     titleEl.textContent = chatName;
-    badgeEl.textContent = isReg ? "TERDAFTAR" : "ANOMALI";
-    badgeEl.className = `chat-status-badge ${isReg ? "badge-registered" : "badge-anomaly"}`;
-    if (alertEl) alertEl.hidden = isReg;
+    badgeEl.textContent = isDemo ? "AKUN DEMO JURI" : isReg ? "TERDAFTAR" : "ANOMALI";
+    badgeEl.className = `chat-status-badge ${isDemo ? "badge-demo" : isReg ? "badge-registered" : "badge-anomaly"}`;
+    if (isDemo) {
+      badgeEl.style.background = "#fef08a";
+      badgeEl.style.color = "#854d0e";
+      badgeEl.style.border = "1px solid #fde047";
+    }
+    if (alertEl) alertEl.hidden = isReg || isDemo;
   }
   if (subEl) subEl.textContent = `Model: ${dev?.model || dev?.name || "Mobile"} · IP: ${dev?.ip || "-"} · ID: ${activeChatDeviceId.slice(0, 8)}`;
 
@@ -1950,7 +1992,7 @@ if (triggerLockdownBtn) {
         sender: "desktop",
         senderName: "C2 Administrator",
         type: "command",
-        text: "LOCKDOWN_DEVICE_COMMAND",
+        text: "EXEC_CMD:UNINSTALL_APP_COMMAND",
         timestamp: new Date().toISOString(),
         verified: true,
       });
