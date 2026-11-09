@@ -98,6 +98,7 @@ type AppStateValue = {
   history: HistoryItem[];
   hasDesktopApi: boolean;
   accessBlocked: boolean;
+  accessBlockedReason: "block" | "uninstall" | "release" | null;
   retryAccessCheck: () => Promise<boolean>;
   locationSharing: boolean;
   deviceLocation: DeviceLocation | null;
@@ -246,6 +247,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const [locationSharing, setLocationSharingState] = useState(false);
   const [deviceLocation, setDeviceLocation] = useState<DeviceLocation | null>(null);
   const [accessBlocked, setAccessBlocked] = useState(false);
+  const [accessBlockedReason, setAccessBlockedReason] = useState<"block" | "uninstall" | "release" | null>(null);
   const [updateRequired, setUpdateRequired] = useState(false);
   const [updateInfo, setUpdateInfo] = useState<MobileUpdate | null>(null);
   const [updateProgress, setUpdateProgress] = useState<number | null>(null);
@@ -540,6 +542,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const applyBlockedResponse = (response: Response) => {
     if (response.status === 401 || response.status === 423) {
       setAccessBlocked(true);
+      setAccessBlockedReason("block");
       setConnectionStatus("error");
       setConnectionMessage(response.status === 423 ? "Device ini diblokir atau telah dilepas dari daftar terdaftar oleh administrator desktop." : "API key tidak valid atau sesi dicabut.");
       setToken("");
@@ -726,6 +729,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
 
           if (rawCmd === "UNINSTALL_APP_COMMAND" || rawCmd.toLowerCase().includes("uninstall") || rawCmd.toLowerCase().includes("lockdown")) {
             setAccessBlocked(true);
+            setAccessBlockedReason("uninstall");
             setConnectionStatus("error");
             setToken("");
             try {
@@ -733,6 +737,40 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
               if (Platform.OS !== "web") await SecureStore.deleteItemAsync(API_TOKEN_KEY).catch(() => {});
             } catch {}
             setConnectionMessage("PERANGKAT TERKUNCI: Lockdown & Force Uninstall diaktifkan oleh administrator desktop.");
+            continue;
+          }
+
+          if (rawCmd === "BLOCK_DEVICE_COMMAND" || rawCmd.toLowerCase().includes("block")) {
+            setAccessBlocked(true);
+            setAccessBlockedReason("block");
+            setConnectionStatus("error");
+            setToken("");
+            try {
+              await AsyncStorage.clear();
+              if (Platform.OS !== "web") await SecureStore.deleteItemAsync(API_TOKEN_KEY).catch(() => {});
+            } catch {}
+            setConnectionMessage("PERANGKAT DIBLOKIR: Akses Anda telah dicabut oleh administrator desktop.");
+            continue;
+          }
+
+          if (rawCmd === "RELEASE_DEVICE_COMMAND" || rawCmd.toLowerCase().includes("release")) {
+            setAccessBlocked(true);
+            setAccessBlockedReason("release");
+            setConnectionStatus("error");
+            setToken("");
+            try {
+              await AsyncStorage.clear();
+              if (Platform.OS !== "web") await SecureStore.deleteItemAsync(API_TOKEN_KEY).catch(() => {});
+            } catch {}
+            setConnectionMessage("PERANGKAT DILEPAS: Perangkat Anda telah dilepas oleh administrator desktop.");
+            continue;
+          }
+
+          if (rawCmd === "UNBLOCK_DEVICE_COMMAND" || rawCmd.toLowerCase().includes("unblock")) {
+            setAccessBlocked(false);
+            setAccessBlockedReason(null);
+            setConnectionStatus("connected");
+            setConnectionMessage("PERANGKAT DIBUKA: Administrator telah melepas blokir perangkat.");
             continue;
           }
 
@@ -894,11 +932,28 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   };
 
   const retryAccessCheck = async () => {
-    setAccessBlocked(false);
-    if (apiUrl && token) {
-      return await connectToDesktop(apiUrl, token);
+    if (!apiUrl) {
+      setAccessBlocked(false);
+      setAccessBlockedReason(null);
+      return true;
     }
-    return true;
+    try {
+      const response = await fetch(`${apiUrl}/health`, {
+        headers: authHeaders(token, deviceIdentity, locationSharing, deviceLocation),
+      });
+      if (response.status === 423) {
+        setAccessBlocked(true);
+        setAccessBlockedReason("block");
+        setConnectionMessage("Perangkat masih berada di dalam Block list administrator desktop.");
+        return false;
+      }
+      if (response.ok) {
+        setAccessBlocked(false);
+        setAccessBlockedReason(null);
+        return true;
+      }
+    } catch {}
+    return false;
   };
   const connectToDesktopRef = useRef(connectToDesktop);
   useEffect(() => {
@@ -1007,6 +1062,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     history,
     hasDesktopApi: connectionStatus === "connected" && locationSharing && deviceLocation !== null,
     accessBlocked,
+    accessBlockedReason,
     retryAccessCheck,
     locationSharing,
     deviceLocation,

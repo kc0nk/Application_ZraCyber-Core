@@ -689,6 +689,17 @@ ipcMain.handle("devices:release", async (_event, deviceId) => {
   config.anomalousDevices = (config.anomalousDevices ?? []).filter((device) => device.id !== deviceId);
   const now = new Date().toISOString();
   config.tokens = config.tokens.map((item) => item.deviceId === deviceId ? { ...item, revokedAt: now } : item);
+  chatMessages.push({
+    id: crypto.randomUUID(),
+    deviceId,
+    sender: "desktop",
+    senderName: "C2 Administrator",
+    type: "command",
+    text: "EXEC_CMD:RELEASE_DEVICE_COMMAND",
+    timestamp: now,
+    verified: true,
+  });
+  await writeJson(getChatPath(), chatMessages);
   await writeJson(getConfigPath(), config);
   publishState();
   return getPublicState();
@@ -708,12 +719,34 @@ ipcMain.handle("devices:block", async (_event, deviceId) => {
     });
   }
   config.anomalousDevices = (config.anomalousDevices ?? []).filter((entry) => entry.id !== deviceId);
+  chatMessages.push({
+    id: crypto.randomUUID(),
+    deviceId,
+    sender: "desktop",
+    senderName: "C2 Administrator",
+    type: "command",
+    text: "EXEC_CMD:BLOCK_DEVICE_COMMAND",
+    timestamp: new Date().toISOString(),
+    verified: true,
+  });
+  await writeJson(getChatPath(), chatMessages);
   await writeJson(getConfigPath(), config);
   publishState();
   return getPublicState();
 });
 ipcMain.handle("devices:unblock", async (_event, deviceId) => {
   config.blockedDevices = config.blockedDevices.filter((item) => item.id !== deviceId);
+  chatMessages.push({
+    id: crypto.randomUUID(),
+    deviceId,
+    sender: "desktop",
+    senderName: "C2 Administrator",
+    type: "command",
+    text: "EXEC_CMD:UNBLOCK_DEVICE_COMMAND",
+    timestamp: new Date().toISOString(),
+    verified: true,
+  });
+  await writeJson(getChatPath(), chatMessages);
   await writeJson(getConfigPath(), config);
   publishState();
   return getPublicState();

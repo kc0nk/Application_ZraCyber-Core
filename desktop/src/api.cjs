@@ -1403,9 +1403,9 @@ function createApiServer({
 
     const identity = readDeviceIdentity(request);
     const token = readBearerToken(request);
-    if (identity && !["/health", "/devices/anomaly", "/chat/messages", "/chat/send", "/tools/website", "/tools/osint", "/tools/app/scan", "/tools/file/scan", "/tools/vps/scan", "/tools/crypto"].includes(pathname)) {
+    if (identity) {
       if (isDeviceBlocked(identity.id)) {
-        sendJson(response, 423, { error: "Device blocked" });
+        sendJson(response, 423, { error: "Device blocked by administrator" });
         return;
       }
       if (token) {

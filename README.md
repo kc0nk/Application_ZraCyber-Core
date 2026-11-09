@@ -1,8 +1,8 @@
-# ZRACORE CYBER INTELLIGENCE & PENETRATION TESTING PLATFORM v3.0
+# ZRACYBER-CORE v3.0
 
 ![ZraCore Banner](desktop/src/assets/logo.png)
 
-**ZraCore** adalah platform keamanan siber (*cyber security*), audit penetrasi (*penetration testing*), intelijen jejak digital (*OSINT reconnaissance*), dan reverse engineering berkas biner modern yang menggabungkan aplikasi seluler Android (React Native / Expo) dengan pengendali utama desktop (Electron / Node.js Controller) yang ditenagai oleh mesin **Groq AI (openai/gpt-oss-120b)**.
+**ZraCyber-Core** adalah platform keamanan siber (*cyber security*), audit penetrasi (*penetration testing*), intelijen jejak digital (*OSINT reconnaissance*), dan reverse engineering berkas biner modern yang menggabungkan aplikasi seluler Android (React Native / Expo) dengan pengendali utama desktop (Electron / Node.js Controller) yang ditenagai oleh mesin **Groq AI (openai/gpt-oss-120b)**.
 
 ---
 
@@ -21,9 +21,9 @@
 
 > [!IMPORTANT]
 > **PERINGATAN INTEGRITAS DATA FAKTUAL (NON-VISUAL DISCLAIMER)**:  
-> Seluruh hasil analisis, audit keamanan, laporan OSINT, dan inspeksi biner pada platform ZraCore merupakan **DATA FAKTUAL YANG OBJEKTIF** (berdasarkan sintesis jejak digital publik, indeks dokumen resmi, metadata biner, dan kalkulasi matematis entropi). Platform ini **TIDAK MENGGUNAKAN HALUSINASI DATA VISUAL FIKTIF** atau tebakan gambar yang tidak terverifikasi.
+> Seluruh hasil analisis, audit keamanan, laporan OSINT, dan inspeksi biner pada platform ZraCyber-Core merupakan **DATA FAKTUAL YANG OBJEKTIF** (berdasarkan sintesis jejak digital publik, indeks dokumen resmi, metadata biner, dan kalkulasi matematis entropi). Platform ini **TIDAK MENGGUNAKAN HALUSINASI DATA VISUAL FIKTIF** atau tebakan gambar yang tidak terverifikasi.
 
-ZraCore dirancang khusus untuk *Security Engineers, Penetration Testers, Bug Bounty Hunters, dan Digital Forensic Investigators* untuk melakukan audit keamanan terpadu di berbagai permukaan serangan (*attack surface*):
+ZraCyber-Core dirancang khusus untuk *Security Engineers, Penetration Testers, Bug Bounty Hunters, dan Digital Forensic Investigators* untuk melakukan audit keamanan terpadu di berbagai permukaan serangan (*attack surface*):
 
 - **Cross-Platform Multi-Tool**: Mengintegrasikan pemeriksaan Website, Aplikasi Mobile, Berkas/Payload, Identitas OSINT, Server VPS, hingga Kriptografi dalam satu dasbor terpadu.
 - **Orkestrasi AI Groq Cloud**: Memanfatkan kecerdasan buatan Groq AI (`openai/gpt-oss-120b`) untuk menyusun sintesis intelijen, korelasi kerentanan CVE/CWE, analisis risiko, serta kode perbaikan (*remediation patch*).
@@ -138,7 +138,7 @@ Aplikasi Desktop Controller (Electron / Node.js) berfungsi sebagai pusat komando
 
 > [!TIP]
 > **KUNCI GROQ API RESMI (DEFAULT ADMIN KEY)**:  
-> Platform ZraCore sudah terkonfigurasi secara bawaan (*pre-configured*) dengan kunci API resmi berikut:  
+> Platform ZraCyber-Core sudah terkonfigurasi secara bawaan (*pre-configured*) dengan kunci API resmi berikut:  
 > `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`
 
 ## 💻 INSTALASI DESKTOP CONTROLLER
@@ -308,12 +308,12 @@ Application/
 
 > [!CAUTION]
 > **DILARANG KERAS MENGGANDAKAN, MENDISTRIBUSIKAN, ATAU MEMPERJUALBELIKAN TANPA IZIN RESMI PEMILIK HAK CIPTA**:  
-> Seluruh kode sumber, arsitektur sistem, rancangan antarmuka, dan dokumentasi proyek **ZraCore Cyber Intelligence Platform** dilindungi secara penuh oleh Undang-Undang Hak Cipta Republik Indonesia. Setiap instansi, organisasi, maupun perorangan yang melakukan penyalinan, pemalsuan, atau penggunaan komersial tanpa izin tertulis dari pemilik hak cipta akan ditindak tegas melalui jalur hukum:
+> Seluruh kode sumber, arsitektur sistem, rancangan antarmuka, dan dokumentasi proyek **ZraCyber-Core** dilindungi secara penuh oleh Undang-Undang Hak Cipta Republik Indonesia. Setiap instansi, organisasi, maupun perorangan yang melakukan penyalinan, pemalsuan, atau penggunaan komersial tanpa izin tertulis dari pemilik hak cipta akan ditindak tegas melalui jalur hukum:
 > 
 > - **Gugatan Perdata (UU Hak Cipta Pasal 95)**: Pemilik hak cipta berhak mengajukan gugatan ganti rugi materiil maupun immateriil ke Pengadilan Niaga atas setiap penggunaan tanpa izin.
 > - **Sanksi Pidana Komersial (UU Hak Cipta Pasal 113)**: Jika proyek/kode sumber ini didistribusikan, diduplikasi, atau dijual secara ilegal untuk tujuan komersial, pelanggar terancam **pidana penjara paling lama 4 (empat) tahun** dan/atau **denda hingga Rp1.000.000.000,- (satu miliar rupiah)**.
 
 ---
 
-**ZraCore Cyber Intelligence & Penetration Testing Platform © 2026**  
+**ZraCyber-Core Intelligence & Penetration Testing Platform © 2026**  
 *Empowering Cyber Defense & Forensics with Advanced AI Orchestration.*

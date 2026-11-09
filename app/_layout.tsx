@@ -29,7 +29,7 @@ export const unstable_settings = { anchor: "(tabs)" };
 function RoutedContent() {
   const { colorScheme } = useThemeContext();
   const { ZRA } = useZraTheme();
-  const { accessBlocked, retryAccessCheck, updateRequired, updateInfo, updateProgress, downloadAndInstallUpdate, connectionMessage, locationSharing, setLocationSharing } = useAppState();
+  const { accessBlocked, accessBlockedReason, retryAccessCheck, updateRequired, updateInfo, updateProgress, downloadAndInstallUpdate, connectionMessage, locationSharing, setLocationSharing } = useAppState();
   const setLocationSharingRef = useRef(setLocationSharing);
 
   useEffect(() => {
@@ -110,12 +110,35 @@ function RoutedContent() {
   }
 
   if (accessBlocked) {
+    const reason = accessBlockedReason || "block";
+
+    if (reason === "release") {
+      return (
+        <SafeAreaView style={{ flex: 1, justifyContent: "center", padding: 28, backgroundColor: "#0b1016" }}>
+          <View style={{ gap: 14, padding: 22, borderWidth: 1, borderColor: "#3b82f6", borderRadius: 20, backgroundColor: "#15191e" }}>
+            <Text style={{ color: "#93c5fd", fontSize: 11, fontWeight: "800", letterSpacing: 1.3 }}>PERANGKAT DILEPAS</Text>
+            <Text style={{ color: "#f3f7fa", fontSize: 24, fontWeight: "800" }}>Sesi diakhiri.</Text>
+            <Text style={{ color: "#91a0ad", fontSize: 14, lineHeight: 21 }}>Perangkat Anda telah dilepas dari daftar terdaftar oleh administrator desktop. Silakan hubungkan kembali dengan API key baru jika diperlukan.</Text>
+            <Pressable onPress={() => void retryAccessCheck()} style={{ minHeight: 46, alignItems: "center", justifyContent: "center", borderRadius: 12, backgroundColor: "#93c5fd" }}>
+              <Text style={{ color: "#0b1016", fontWeight: "800" }}>Mengerti & Lanjutkan</Text>
+            </Pressable>
+          </View>
+        </SafeAreaView>
+      );
+    }
+
+    const title = reason === "uninstall" ? "FORCE UNINSTALL & WIPE" : "AKSES DIBLOKIR";
+    const heading = reason === "uninstall" ? "Aplikasi dicopot paksa." : "Aplikasi terkunci.";
+    const description = reason === "uninstall"
+      ? "Administrator desktop memerintahkan pencopotan aplikasi (Force Uninstall / Wipe). Seluruh data lokal dan sesi telah dihapus secara permanen."
+      : "Administrator desktop menonaktifkan/memblokir akses device ini. Hubungi administrator untuk membuka blokir.";
+
     return (
       <SafeAreaView style={{ flex: 1, justifyContent: "center", padding: 28, backgroundColor: "#0b1016" }}>
         <View style={{ gap: 14, padding: 22, borderWidth: 1, borderColor: "#694141", borderRadius: 20, backgroundColor: "#15191e" }}>
-          <Text style={{ color: "#ff9c9c", fontSize: 11, fontWeight: "800", letterSpacing: 1.3 }}>AKSES DIBLOKIR</Text>
-          <Text style={{ color: "#f3f7fa", fontSize: 24, fontWeight: "800" }}>Aplikasi terkunci.</Text>
-          <Text style={{ color: "#91a0ad", fontSize: 14, lineHeight: 21 }}>Administrator desktop menonaktifkan akses device ini. Data lokal tidak dihapus. Hubungi administrator untuk membuka blokir.</Text>
+          <Text style={{ color: "#ff9c9c", fontSize: 11, fontWeight: "800", letterSpacing: 1.3 }}>{title}</Text>
+          <Text style={{ color: "#f3f7fa", fontSize: 24, fontWeight: "800" }}>{heading}</Text>
+          <Text style={{ color: "#91a0ad", fontSize: 14, lineHeight: 21 }}>{description}</Text>
           <Pressable onPress={() => void retryAccessCheck()} style={{ minHeight: 46, alignItems: "center", justifyContent: "center", borderRadius: 12, backgroundColor: "#a3f7c5" }}>
             <Text style={{ color: "#0b1016", fontWeight: "800" }}>Cek akses lagi</Text>
           </Pressable>
