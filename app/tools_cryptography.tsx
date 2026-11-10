@@ -70,47 +70,11 @@ export default function ToolsCryptographyScreen() {
       setScanProgress(90);
       setScanPhase("Memproses hasil cipher...");
 
-      let report;
-      if (response && response.ok) {
-        report = await response.json();
-      } else {
-        if (cryptoMode === "encrypt") {
-          let b64 = "";
-          try {
-            b64 = btoa(unescape(encodeURIComponent(input)));
-          } catch {
-            b64 = input;
-          }
-          report = {
-            success: true,
-            cryptoResult: {
-              encrypt: {
-                chipertext: `ZRA_${b64}_AES256`,
-                parameter: "AES-256-GCM | Salt: zracore_local_salt | Auth Tag: verified",
-                rumus_bongkar: "**Mode Lokal (Offline Fallback)**:\n- **Algoritma**: AES-256-GCM\n- **Status**: Berhasil dienkripsi secara lokal di perangkat."
-              }
-            },
-            logs: ["[LOCAL-FALLBACK] Desktop API tidak dijangkau; menjalankan enkripsi lokal di perangkat.", "[SUCCESS] Enkripsi berhasil."]
-          };
-        } else {
-          let plain = input;
-          try {
-            const cleanB64 = input.replace(/^ZRA_|_AES256$/g, "");
-            plain = decodeURIComponent(escape(atob(cleanB64)));
-          } catch {}
-          report = {
-            success: true,
-            cryptoResult: {
-              decrypt: {
-                plaintext: plain || input,
-                rumus_yang_di_pakai: "**Mode Lokal (Offline Fallback)**: Dekripsi berhasil dipulihkan secara lokal.",
-                deskripsi: "Integritas ciphertext terverifikasi."
-              }
-            },
-            logs: ["[LOCAL-FALLBACK] Desktop API tidak dijangkau; menjalankan dekripsi lokal di perangkat.", "[SUCCESS] Dekripsi berhasil."]
-          };
-        }
+      if (!response || !response.ok) {
+        const errBody = await response?.json().catch(() => null);
+        throw new Error(errBody?.error || `Desktop Controller mengembalikan HTTP ${response?.status || 500}. Pastikan Desktop API aktif.`);
       }
+      const report = await response.json();
 
       setReportData(report);
       setScanProgress(100);

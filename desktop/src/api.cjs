@@ -7,17 +7,23 @@
 
 const { createServer } = require("node:http");
 const { createReadStream } = require("node:fs");
-const { randomUUID, createHash } = require("node:crypto");
+const crypto = require("node:crypto");
+const { randomUUID, createHash } = crypto;
 const { lookup, resolve4, resolve6, resolveCaa, resolveMx, resolveNs, resolveTxt } = require("node:dns/promises");
 const { isIP } = require("node:net");
+const net = require("node:net");
 const path = require("node:path");
 const fs = require("node:fs");
 const ipaddr = require("ipaddr.js");
 const { domainToASCII } = require("node:url");
+const { runApkOrchestrator } = require("../scanners/apk/orchestrator.js");
+const { runOsintOrchestrator } = require("../osint/orchestrator.js");
+const { runFileOrchestrator } = require("../scanners/file/file-orchestrator.cjs");
+const { runVpsOrchestrator } = require("../scanners/vps/vps-orchestrator.cjs");
 
 // Mengubah batas body request dan sampel biner ke 3 GB (3 * 1024 * 1024 * 1024)
 const MAX_BODY_BYTES = 3 * 1024 * 1024 * 1024; 
-const MAX_APP_SAMPLE_BYTES = 20 * 1024 * 1024;
+const MAX_APP_SAMPLE_BYTES = 200 * 1024 * 1024;
 
 const MAX_WEBSITE_CRAWL_PAGES = 25;
 const anomalyUpdates = new Map();
@@ -420,7 +426,7 @@ function analyzeFileArtifact({ name, data }) {
 }
 
 function performCryptoOperation(mode, input, secretKey) {
-  const key = crypto.scryptSync(secretKey || "zracore_default_salt", "zracore_salt", 32);
+  const key = crypto.pbkdf2Sync(secretKey || "zracore_default_salt", "zracore_salt", 10000, 32, "sha256");
   if (mode === "encrypt") {
     const iv = crypto.randomBytes(12);
     const cipher = crypto.createCipheriv("aes-256-gcm", key, iv);
@@ -437,12 +443,12 @@ function performCryptoOperation(mode, input, secretKey) {
         encrypt: {
           chipertext: ciphertextBase64,
           parameter: `AES-256-GCM | IV (Nonce): ${iv.toString("hex")} | Auth Tag: ${authTag}`,
-          rumus_bongkar: `**Metadata Enkripsi Kriptografis**:\n- **Algoritma**: AES-256-GCM\n- **KDF**: Scrypt (32-byte key)\n- **Nonce (IV)**: \`${iv.toString("hex")}\`\n- **Auth Tag**: \`${authTag}\``
+          rumus_bongkar: `**Metadata Enkripsi Kriptografis**:\n- **Algoritma**: AES-256-GCM\n- **KDF**: PBKDF2-HMAC-SHA256 (32-byte key)\n- **Nonce (IV)**: \`${iv.toString("hex")}\`\n- **Auth Tag**: \`${authTag}\``
         }
       },
       logs: [
         "[CRYPTO-INIT] Menerima data plaintext dan kunci rahasia.",
-        "[KDF] Menurunkan kunci 256-bit menggunakan Key Derivation Function (Scrypt).",
+        "[KDF] Menurunkan kunci 256-bit menggunakan Key Derivation Function (PBKDF2).",
         "[AES-256-GCM] Menghasilkan enkripsi simetris terautentikasi dengan Nonce & Auth Tag.",
         "[SUCCESS] Ciphertext berhasil di-encode ke Base64."
       ]
@@ -483,6 +489,35 @@ function performCryptoOperation(mode, input, secretKey) {
   }
 }
 
+async function probeHost(targetIp, targetPort) {
+  return new Promise((resolve) => {
+    const socket = new net.Socket();
+    let banner = "";
+    let connected = false;
+
+    socket.setTimeout(4000);
+    socket.on("connect", () => {
+      connected = true;
+    });
+    socket.on("data", (chunk) => {
+      banner += chunk.toString("utf8").trim();
+      socket.destroy();
+    });
+    socket.on("timeout", () => {
+      socket.destroy();
+      resolve({ connected: false, error: "Connection timeout", banner: "" });
+    });
+    socket.on("error", (err) => {
+      resolve({ connected: false, error: err.message, banner: "" });
+    });
+    socket.on("close", () => {
+      resolve({ connected, error: connected ? null : "Connection closed", banner: banner.slice(0, 100) });
+    });
+
+    socket.connect(Number(targetPort) || 22, targetIp);
+  });
+}
+
 async function generateVpsSecurityReport(targetIp, port, sshUser, loginUrl, loginUser) {
   const ip = targetIp.trim() || "127.0.0.1";
   const sshPort = port || "22";
@@ -491,6 +526,17 @@ async function generateVpsSecurityReport(targetIp, port, sshUser, loginUrl, logi
   const loginAccount = loginUser ? loginUser.trim() : "";
   const isPostAuth = Boolean(loginEndpoint);
   const auditModeLabel = isPostAuth ? "DENGAN LOGIN (Post-Auth Authenticated Scan)" : "TANPA LOGIN (Pre-Auth External Scan)";
+
+  // 1. Perform actual Network Discovery / Socket Probe
+  const probeResult = await probeHost(ip, sshPort);
+
+  const evidence = {
+    targetIp: ip,
+    port: Number(sshPort),
+    networkDiscovery: probeResult,
+    auditMode: auditModeLabel,
+    authentication: isPostAuth ? { mode: "authenticated", loginEndpoint, loginAccount } : { mode: "pre-auth", sshUser: user }
+  };
 
   let activeGroqKey = process.env.GROQ_API_KEY || "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";
   try {
@@ -505,15 +551,12 @@ async function generateVpsSecurityReport(targetIp, port, sshUser, loginUrl, logi
 
   let aiReportText = "";
   try {
-    const prompt = `[ZRACORE SERVER SECURITY AUDIT - ${auditModeLabel}]
-Target: IP ${ip} | Port SSH: ${sshPort} | User: ${user}
-${isPostAuth ? `Endpoint Login Terautentikasi: ${loginEndpoint} | Kredensial Uji: ${loginAccount}` : "Mode: Tanpa Login (Pemindaian Eksternal & Permukaan Serangan Publik tanpa Autentikasi)"}
-Sebagai Senior Security Auditor & Defensive Engineer, susun laporan audit keamanan server Linux mencakup:
-1. ${isPostAuth ? "Post-Auth Vulnerability Detection: Analisis celah keamanan di dalam sistem setelah login (misal: IDOR, Broken Object Level Authorization, Privilege Escalation, penyusupan file/webshell di area dashboard tersembunyi, dan validasi sesi)." : "Pre-Auth Surface & Configuration Audit: Evaluasi akses SSH, eksposur port terbuka, servis rentan, dan hak akses filesystem luar."}
-2. Malware & Backdoor Inspection: Deteksi skrip virus, trojan, atau webshell tersembunyi.
-3. Hardening & Remediation: Rekomendasi perbaikan teknis.
+    const prompt = `[ZRACORE SERVER SECURITY AUDIT - EVIDENCE INTERPRETATION]
+Berikut adalah data evidence collection hasil pemindaian jaringan riil terhadap target VPS:
+${JSON.stringify(evidence, null, 2)}
 
-Berikan hasil analisis dalam format JSON array of objects yang valid (tanpa markdown backticks), di mana setiap objek memiliki properti: title, severity (Critical/High/Medium/Low/Info), check, dan summary. Bahasa Indonesia.`;
+Sebagai Senior Security Auditor & Defensive Engineer, interpretasikan evidence tersebut dan susun laporan audit keamanan server Linux yang mendalam (termasuk analisis port, banner SSH, miskonfigurasi, dan hardening).
+Berikan hasil analisis dalam format JSON array of objects yang valid (tanpa markdown backticks), di mana setiap objek memiliki properti: title, severity (Critical/High/Medium/Low/Info), check, dan summary berdasarkan evidence di上の data. Bahasa Indonesia.`;
 
     const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
@@ -521,7 +564,7 @@ Berikan hasil analisis dalam format JSON array of objects yang valid (tanpa mark
       body: JSON.stringify({
         model: "openai/gpt-oss-120b",
         messages: [{ role: "user", content: prompt }],
-        temperature: 0.7,
+        temperature: 0.2,
         max_tokens: 3072,
       }),
       signal: AbortSignal.timeout(35_000),
@@ -550,15 +593,7 @@ Berikan hasil analisis dalam format JSON array of objects yang valid (tanpa mark
   } catch {}
 
   if (vulnerabilities.length === 0 || vulnerabilities.some(v => /sorry|unable|maaf/i.test(v.summary))) {
-    vulnerabilities = isPostAuth ? [
-      { title: "IDOR Vulnerability in User Dashboard Profile", severity: "Critical", check: "Post-Auth - IDOR", summary: `Endpoint terautentikasi di ${loginEndpoint} tidak memvalidasi kepemilikan objek saat mengakses parameter ID pengguna lain.` },
-      { title: "Privilege Escalation via Unchecked User Role", severity: "Critical", check: "Post-Auth - PrivEsc", summary: "Pengguna berhak akses rendah dapat mengakses fungsi administratif dengan memanipulasi klaim sesi token." },
-      { title: "Hidden Webshell Script in Admin Upload Directory", severity: "Critical", check: "Post-Auth - Webshell", summary: "Ditemukan skrip PHP tersembunyi yang memungkinkan eksekusi perintah sistem dari dalam panel admin." }
-    ] : [
-      { title: "SSH Root Password Authentication Enabled", severity: "High", check: "Pre-Auth - Configuration Analysis", summary: "Layanan SSH mengizinkan autentikasi password untuk pengguna root secara langsung dari luar." },
-      { title: "Outdated OpenSSL Version / Vulnerable Package", severity: "Critical", check: "Pre-Auth - Host CVE", summary: "Ditemukan versi paket OS host yang memiliki kerentanan CVE aktif." },
-      { title: "Suspicious Cronjob Persistence Script", severity: "Critical", check: "Pre-Auth - Malware Analysis", summary: "Terdeteksi tugas cron tersembunyi yang mengunduh skrip eksternal secara periodik." }
-    ];
+    throw new Error("Groq AI gagal menyusun laporan audit VPS yang valid atau menolak permintaan. Pastikan API key valid.");
   }
 
   const crit = vulnerabilities.filter(v => (v.severity || "").toLowerCase() === "critical").length;
@@ -1328,6 +1363,7 @@ function createApiServer({
   deleteChatMessage,
   verifyChatMessage,
   isDeviceBlocked,
+  isForcedUninstall,
   receiveAnomalyDevice,
   getHistory,
   addHistoryItem,
@@ -1408,6 +1444,10 @@ function createApiServer({
         sendJson(response, 423, { error: "Device blocked by administrator" });
         return;
       }
+      if (isForcedUninstall && isForcedUninstall(identity.id)) {
+        sendJson(response, 200, { lockdown: true, action: "uninstall", error: "Force uninstall active" });
+        return;
+      }
       if (token) {
         const authResult = await authorizeDevice(identity, request.socket.remoteAddress ?? "127.0.0.1", token, pathname);
         if (!authResult.allowed) {
@@ -1436,7 +1476,9 @@ function createApiServer({
         } else {
           sample = await readJson(request, Math.ceil(MAX_APP_SAMPLE_BYTES * 4 / 3) + 1024);
         }
-        sendJson(response, 200, analyzeAppSample(sample));
+        const apiKey = getGroqApiKey?.()?.trim() || process.env.GROQ_API_KEY || "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";
+        const report = await runApkOrchestrator(sample, apiKey);
+        sendJson(response, 200, report);
       } catch (error) {
         sendJson(response, 400, { success: false, error: error instanceof Error ? error.message : "Inspeksi biner gagal." });
       }
@@ -1451,7 +1493,7 @@ function createApiServer({
       try {
         const multipart = await parseMultipartFormData(request, MAX_APP_SAMPLE_BYTES + 128 * 1024);
         if (!multipart.file?.data) throw new Error("File artefak tidak ditemukan di upload.");
-        const report = analyzeFileArtifact({ name: multipart.file.name, data: multipart.file.data });
+        const report = runFileOrchestrator({ name: multipart.file.name, data: multipart.file.data });
         sendJson(response, 200, report);
       } catch (error) {
         sendJson(response, 400, { success: false, error: error instanceof Error ? error.message : "Analisis file gagal." });
@@ -1466,7 +1508,8 @@ function createApiServer({
     if (pathname === "/tools/vps/scan" && request.method === "POST") {
       try {
         const body = await readJson(request, 64 * 1024);
-        const report = await generateVpsSecurityReport(body?.targetIp, body?.port, body?.sshUser, body?.loginUrl, body?.loginUser);
+        const apiKey = getGroqApiKey?.()?.trim() || process.env.GROQ_API_KEY || "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";
+        const report = await runVpsOrchestrator(body, apiKey);
         sendJson(response, 200, report);
       } catch (error) {
         sendJson(response, 400, { success: false, error: error instanceof Error ? error.message : "Inspeksi VPS gagal." });
@@ -1493,174 +1536,14 @@ function createApiServer({
     // ========================================================================
     // TOOLS_OSINT API | POST /tools/osint
     // ========================================================================
-    async function verifySocialMediaPresence(username) {
-      const targetPlatforms = [
-        { name: "GitHub", url: `https://github.com/${username}` },
-        { name: "Instagram", url: `https://www.instagram.com/${username}/` },
-        { name: "Twitter / X", url: `https://x.com/${username}` },
-        { name: "Threads", url: `https://www.threads.net/@${username}` }
-      ];
-
-      let activeProfiles = [];
-      for (const platform of targetPlatforms) {
-        try {
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 3500);
-          const response = await fetch(platform.url, {
-            method: "GET",
-            headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) ZraCore-OSINT-Verifier/3.0" },
-            signal: controller.signal
-          });
-          clearTimeout(timeoutId);
-
-          if (response.status === 200 || response.status === 302 || response.status === 301) {
-            activeProfiles.push({ title: `${platform.name} (AKTIF & VALID)`, url: platform.url });
-          }
-        } catch (e) {
-          // Ignore
-        }
-      }
-      return activeProfiles;
-    }
     if (pathname === "/tools/osint" && request.method === "POST") {
       try {
         const body = await readJson(request, 32 * 1024 * 1024);
-        const rawTarget = (body?.target || "sample_target").trim();
-        const isUsername = rawTarget.startsWith("@") || !rawTarget.includes(" ");
-        const cleanTarget = rawTarget.replace(/^@/, "");
-
         const apiKey = getGroqApiKey?.()?.trim() || process.env.GROQ_API_KEY || "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";
-
-        const osintPrompt = isUsername
-          ? `[ZRACORE OSINT USERNAME RECONNAISSANCE]
-Target Username: @${cleanTarget}
-Sebagai Senior Intelligence Analyst, lakukan sintesis dossier jejak digital untuk target username ini. Susun deskripsi intelijen terperinci mengenai potensi jejak digital di platform media sosial, aktivitas publik, dan potensi exposure.
-Berikan jawaban dalam format JSON mentah tanpa markdown (\`\`\`) yang berisi objek terstruktur:
-{
-  "detected_entities": ["Username Target: @${cleanTarget}"],
-  "social_media_matches": [
-    {"title": "Instagram Profile", "url": "https://www.instagram.com/${cleanTarget}"},
-    {"title": "Twitter / X Profile", "url": "https://x.com/${cleanTarget}"},
-    {"title": "Threads Profile", "url": "https://www.threads.net/@${cleanTarget}"},
-    {"title": "GitHub User Footprint", "url": "https://github.com/${cleanTarget}"},
-    {"title": "LinkedIn Profile Search", "url": "https://www.linkedin.com/pub/dir?firstName=${encodeURIComponent(cleanTarget)}"},
-    {"title": "Pinterest Profile Index", "url": "https://id.pinterest.com/search/pins/?q=${encodeURIComponent(cleanTarget)}"},
-    {"title": "Scribd Document Index", "url": "https://www.scribd.com/search?query=${encodeURIComponent(cleanTarget)}"}
-  ],
-  "digital_footprint_summary": "**Sintesis Intelijen Username @${cleanTarget}**:\\n- **Profil Publik**: Ditemukan jejak username terindeks di platform pengembang dan media sosial.\\n- **Aktivitas**: Terhubung ke repositori atau konten publik terindeks."
-}`
-          : `[ZRACORE OSINT FULL NAME & IDENTITY RECONNAISSANCE]
-Target Nama Lengkap: ${cleanTarget}
-Sebagai Senior Intelligence Analyst & OSINT Investigator, lakukan sintesis dossier jejak digital mendalam untuk nama lengkap ini (contoh: estimasi riwayat pendidikan/sekolah dari publikasi dokumen Scribd, jejak karir profesional di LinkedIn, dokumen publik terindeks, dan media berita). Susun penjelasan intelijen yang kaya dan terperinci.
-Berikan jawaban dalam format JSON mentah tanpa markdown (\`\`\`) yang berisi objek terstruktur:
-{
-  "detected_entities": ["Nama Lengkap: ${cleanTarget}"],
-  "social_media_matches": [
-    {"title": "Google Search Exact Name: \\"${cleanTarget}\\"", "url": "https://www.google.com/search?q=${encodeURIComponent('"' + cleanTarget + '"')}"},
-    {"title": "LinkedIn People Directory Search", "url": "https://www.linkedin.com/pub/dir?firstName=${encodeURIComponent(cleanTarget)}"},
-    {"title": "Facebook Public Directory Search", "url": "https://www.facebook.com/public?query=${encodeURIComponent(cleanTarget)}"},
-    {"title": "News & Media Mention Index", "url": "https://www.google.com/search?q=${encodeURIComponent('"' + cleanTarget + '" news OR berita')}"},
-    {"title": "Scribd Document & Publication Search", "url": "https://www.scribd.com/search?query=${encodeURIComponent(cleanTarget)}"},
-    {"title": "Pinterest Name & Pin Index", "url": "https://id.pinterest.com/search/pins/?q=${encodeURIComponent(cleanTarget)}"}
-  ],
-  "digital_footprint_summary": "**Sintesis Intelijen Identitas (${cleanTarget})**:\\n- **Riwayat Pendidikan/Akademis**: Terdeteksi referensi nama dalam publikasi/dokumen akademis terindeks di Scribd & jurnal publik.\\n- **Jejak Karir & Profesional**: Terhubung dengan direktori profil LinkedIn & publikasi media berita.\\n- **Status Identitas**: Nama terdaftar dalam indeks publikasi dokumen resmi."
-}`;
-
-        const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-          body: JSON.stringify({
-            model: "openai/gpt-oss-120b",
-            messages: [{ role: "user", content: osintPrompt }],
-            temperature: 0.0,
-            max_tokens: 2048,
-          }),
-          signal: AbortSignal.timeout(30_000),
-        });
-
-        const data = await res.json();
-        const rawContent = data.choices?.[0]?.message?.content;
-        let parsed;
-        try {
-          const cleaned = (rawContent || "").replace(/```json|```/g, "").trim();
-          const firstBrace = cleaned.indexOf("{");
-          const lastBrace = cleaned.lastIndexOf("}");
-          if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
-            parsed = JSON.parse(cleaned.slice(firstBrace, lastBrace + 1));
-          } else {
-            parsed = JSON.parse(cleaned);
-          }
-        } catch {
-          parsed = {};
-        }
-
-        const usernameMatches = [
-          { title: "Instagram Profile", url: `https://www.instagram.com/${cleanTarget}` },
-          { title: "Twitter / X Profile", url: `https://x.com/${cleanTarget}` },
-          { title: "Threads Profile", url: `https://www.threads.net/@${cleanTarget}` },
-          { title: "GitHub User Footprint", url: `https://github.com/${cleanTarget}` },
-          { title: "LinkedIn Profile Search", url: `https://www.linkedin.com/pub/dir?firstName=${encodeURIComponent(cleanTarget)}` },
-          { title: "Pinterest Profile Index", url: `https://id.pinterest.com/search/pins/?q=${encodeURIComponent(cleanTarget)}` },
-          { title: "Unsplash Creator Profile", url: `https://unsplash.com/@${cleanTarget}` },
-          { title: "Pxhere Profile Footprint", url: `https://pxhere.com/id/search?q=${encodeURIComponent(cleanTarget)}` },
-          { title: "Google Search Overall Footprint", url: `https://www.google.com/search?q=${encodeURIComponent(cleanTarget)}` }
-        ];
-
-        const nameMatches = [
-          { title: `Google Search Exact Name: "${cleanTarget}"`, url: `https://www.google.com/search?q=${encodeURIComponent('"' + cleanTarget + '"')}` },
-          { title: `LinkedIn People Directory Search`, url: `https://www.linkedin.com/pub/dir?firstName=${encodeURIComponent(cleanTarget)}` },
-          { title: `Facebook Public Directory Search`, url: `https://www.facebook.com/public?query=${encodeURIComponent(cleanTarget)}` },
-          { title: `News & Media Mention Index`, url: `https://www.google.com/search?q=${encodeURIComponent('"' + cleanTarget + '" news OR berita')}` },
-          { title: `Scribd Document & Publication Search`, url: `https://www.scribd.com/search?query=${encodeURIComponent(cleanTarget)}` },
-          { title: `Pinterest Name & Pin Index`, url: `https://id.pinterest.com/search/pins/?q=${encodeURIComponent(cleanTarget)}` },
-          { title: `Google Images Exact Match`, url: `https://www.google.com/search?tbm=isch&q=${encodeURIComponent('"' + cleanTarget + '"')}` }
-        ];
-
-        const livePresence = isUsername ? await verifySocialMediaPresence(cleanTarget) : [];
-        const defaultMatches = isUsername ? usernameMatches : nameMatches;
-
-        const baseMatches = (parsed && Array.isArray(parsed.social_media_matches) && parsed.social_media_matches.length > 0)
-          ? parsed.social_media_matches
-          : (parsed && Array.isArray(parsed.google_search_matches) && parsed.google_search_matches.length > 0)
-          ? parsed.google_search_matches
-          : defaultMatches;
-
-        const seenUrls = new Set();
-        const matches = [];
-        for (const p of [...livePresence, ...baseMatches]) {
-          if (!seenUrls.has(p.url)) {
-            seenUrls.add(p.url);
-            matches.push(p);
-          }
-        }
-
-        sendJson(response, 200, {
-          success: true,
-          category: "osint",
-          scanType: isUsername ? "social-media-username-recon" : "full-name-identity-recon",
-          summary: `Berhasil memetakan ${matches.length} jejak ${isUsername ? "username" : "nama lengkap"} untuk "${rawTarget}".`,
-          visualIntelligence: {
-            detected_entities: parsed?.detected_entities || [isUsername ? `Username: @${cleanTarget}` : `Nama Lengkap: ${rawTarget}`],
-            google_search_matches: matches,
-            geolocation: {
-              formatted_address: parsed?.digital_footprint_summary || (isUsername ? "Profil Username Publik Terindeks" : "Jejak Identitas & Nama Publik Terindeks"),
-              coordinates: isUsername ? "Username Handle" : "Nama Lengkap",
-              confidence: "95%",
-              maps_url: ""
-            }
-          },
-          logs: [
-            `[OSINT-INIT] Menerima target ${isUsername ? "Username" : "Nama Lengkap"}: ${rawTarget}.`,
-            isUsername
-              ? "[USERNAME-RECON] Memetakan handle di Instagram, Twitter/X, Threads, GitHub, LinkedIn, Pinterest..."
-              : "[NAME-RECON] Memetakan nama di Google Exact Search, LinkedIn Directory, Facebook Public, News, & Scribd...",
-            `[MATCH-FOUND] Berhasil memetakan ${matches.length} tautan jejak digital.`,
-            "[SUCCESS] Laporan dossier OSINT intelijen berhasil disusun."
-          ],
-          limitations: "Pencarian jejak digital dilakukan secara publik tanpa meretas privasi pengguna."
-        });
-      } catch (err) {
-        sendJson(response, 400, { success: false, error: err.message });
+        const report = await runOsintOrchestrator(body, apiKey);
+        sendJson(response, 200, report);
+      } catch (error) {
+        sendJson(response, 400, { success: false, error: error instanceof Error ? error.message : "OSINT recon gagal." });
       }
       return;
     }

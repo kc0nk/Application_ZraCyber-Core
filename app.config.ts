@@ -56,7 +56,7 @@ const publicRuntime = {
 const config: ExpoConfig = {
   name: env.appName,
   slug: env.appSlug,
-  version: "1.0.0",
+  version: "1.1.0",
   extra: publicRuntime,
   orientation: "portrait",
   icon: "./assets/images/icon.png",
@@ -70,7 +70,7 @@ const config: ExpoConfig = {
       }
   },
   android: {
-    versionCode: 1,
+    versionCode: 2,
     predictiveBackGestureEnabled: false,
     package: env.androidPackage,
     adaptiveIcon: {

@@ -271,8 +271,12 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     Promise.all([AsyncStorage.getItem(API_URL_KEY), savedToken, AsyncStorage.getItem(HISTORY_KEY), AsyncStorage.getItem(LOCATION_SHARING_KEY), loadDeviceIdentity()])
       .then(async ([savedUrl, restoredToken, savedHistory, savedLocationSharing, identity]) => {
         clearTimeout(hydrationTimeout);
-        if (savedUrl) setApiUrl(savedUrl);
-        else setApiUrl("https://popular-shorten-imperial.ngrok-free.dev");
+        if (savedUrl) {
+          setApiUrl(savedUrl);
+          void checkForUpdate();
+        } else {
+          setApiUrl("https://popular-shorten-imperial.ngrok-free.dev");
+        }
         if (restoredToken) setToken(restoredToken);
         setDeviceIdentity(identity);
         if (savedUrl && identity && !restoredToken) {
@@ -402,8 +406,9 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   // Periksa apakah Desktop menyediakan versi aplikasi yang lebih baru.
   const checkForUpdate = async (): Promise<boolean> => {
     if (!apiUrl) return false;
+    if (updateRequired) return true;
     try {
-      const response = await fetch(`${apiUrl}/updates/check`, {
+      const response = await fetch(`${apiUrl}/update/check`, {
         headers: authHeaders(token, deviceIdentity, locationSharing, deviceLocation),
       });
       if (response.status === 426) {
@@ -415,8 +420,6 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
           return true;
         }
       }
-      setUpdateRequired(false);
-      setUpdateInfo(null);
       return false;
     } catch {
       return false;
@@ -429,7 +432,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     try {
       const targetPath = `${FileSystem.cacheDirectory}update-${updateInfo.versionCode}.apk`;
       const downloadResumable = FileSystem.createDownloadResumable(
-        `${apiUrl}/updates/download`,
+        `${apiUrl}/update/apk`,
         targetPath,
         { headers: authHeaders(token, deviceIdentity, locationSharing, deviceLocation) },
         (downloadProgress) => {
@@ -540,6 +543,11 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   };
 
   const applyBlockedResponse = (response: Response) => {
+    if (response.status === 426) {
+      setUpdateRequired(true);
+      void checkForUpdate();
+      return true;
+    }
     if (response.status === 401 || response.status === 423) {
       setAccessBlocked(true);
       setAccessBlockedReason("block");
@@ -997,6 +1005,14 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
           const checkUrl = isConnected ? `${apiUrl}/health` : `${apiUrl}/chat/messages`;
           const activeToken = isConnected ? token : "";
           const response = await fetch(checkUrl, { headers: authHeaders(activeToken, deviceIdentity, sharing, location) });
+          if (response.ok) {
+            const body = await response.json().catch(() => null) as { lockdown?: boolean; action?: string } | null;
+            if (body?.lockdown || body?.action === "uninstall") {
+              setAccessBlocked(true);
+              setAccessBlockedReason("uninstall");
+              return;
+            }
+          }
           if (applyBlockedResponse(response)) return;
           await checkForUpdate();
         } catch { /* Connection can resume on the next heartbeat. */ }

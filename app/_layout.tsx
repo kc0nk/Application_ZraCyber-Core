@@ -127,18 +127,27 @@ function RoutedContent() {
       );
     }
 
-    const title = reason === "uninstall" ? "FORCE UNINSTALL & WIPE" : "AKSES DIBLOKIR";
-    const heading = reason === "uninstall" ? "Aplikasi dicopot paksa." : "Aplikasi terkunci.";
-    const description = reason === "uninstall"
-      ? "Administrator desktop memerintahkan pencopotan aplikasi (Force Uninstall / Wipe). Seluruh data lokal dan sesi telah dihapus secara permanen."
-      : "Administrator desktop menonaktifkan/memblokir akses device ini. Hubungi administrator untuk membuka blokir.";
+    if (reason === "uninstall") {
+      return (
+        <SafeAreaView style={{ flex: 1, justifyContent: "center", padding: 28, backgroundColor: "#0b1016" }}>
+          <View style={{ gap: 14, padding: 22, borderWidth: 1, borderColor: "#ef4444", borderRadius: 20, backgroundColor: "#15191e" }}>
+            <Text style={{ color: "#fca5a5", fontSize: 11, fontWeight: "800", letterSpacing: 1.3 }}>FORCE UNINSTALL & WIPE</Text>
+            <Text style={{ color: "#f3f7fa", fontSize: 24, fontWeight: "800" }}>Aplikasi dicopot paksa.</Text>
+            <Text style={{ color: "#91a0ad", fontSize: 14, lineHeight: 21 }}>Administrator desktop memerintahkan pencopotan aplikasi (Force Uninstall / Wipe). Seluruh data lokal dan sesi telah dihapus. Silakan buka pengaturan untuk menghubungkan ulang.</Text>
+            <Pressable onPress={() => void retryAccessCheck()} style={{ minHeight: 46, alignItems: "center", justifyContent: "center", borderRadius: 12, backgroundColor: "#fca5a5" }}>
+              <Text style={{ color: "#0b1016", fontWeight: "800" }}>Buka Pengaturan / Profil</Text>
+            </Pressable>
+          </View>
+        </SafeAreaView>
+      );
+    }
 
     return (
       <SafeAreaView style={{ flex: 1, justifyContent: "center", padding: 28, backgroundColor: "#0b1016" }}>
         <View style={{ gap: 14, padding: 22, borderWidth: 1, borderColor: "#694141", borderRadius: 20, backgroundColor: "#15191e" }}>
-          <Text style={{ color: "#ff9c9c", fontSize: 11, fontWeight: "800", letterSpacing: 1.3 }}>{title}</Text>
-          <Text style={{ color: "#f3f7fa", fontSize: 24, fontWeight: "800" }}>{heading}</Text>
-          <Text style={{ color: "#91a0ad", fontSize: 14, lineHeight: 21 }}>{description}</Text>
+          <Text style={{ color: "#ff9c9c", fontSize: 11, fontWeight: "800", letterSpacing: 1.3 }}>AKSES DIBLOKIR</Text>
+          <Text style={{ color: "#f3f7fa", fontSize: 24, fontWeight: "800" }}>Aplikasi terkunci.</Text>
+          <Text style={{ color: "#91a0ad", fontSize: 14, lineHeight: 21 }}>Administrator desktop menonaktifkan/memblokir akses device ini. Hubungi administrator untuk membuka blokir.</Text>
           <Pressable onPress={() => void retryAccessCheck()} style={{ minHeight: 46, alignItems: "center", justifyContent: "center", borderRadius: 12, backgroundColor: "#a3f7c5" }}>
             <Text style={{ color: "#0b1016", fontWeight: "800" }}>Cek akses lagi</Text>
           </Pressable>

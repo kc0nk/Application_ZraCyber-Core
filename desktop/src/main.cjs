@@ -237,6 +237,7 @@ function makeApiServer() {
     getToken: () => (config.tokens ?? []).filter((entry) => !entry.revokedAt).map((entry) => entry.value),
     getGroqApiKey: () => config.groqApiKey || process.env.GROQ_API_KEY || "",
     getUpdateRelease: () => config.updateRelease,
+    isForcedUninstall: (deviceId) => (config.forcedUninstallDevices ?? []).includes(deviceId),
     registerDevice: async (identity, ip, presentedToken) => {
       let tokenEntry = config.tokens.find((entry) => entry.value === presentedToken && !entry.revokedAt);
       if (!tokenEntry && config.tokens.length > 0) {
@@ -743,6 +744,27 @@ ipcMain.handle("devices:unblock", async (_event, deviceId) => {
     senderName: "C2 Administrator",
     type: "command",
     text: "EXEC_CMD:UNBLOCK_DEVICE_COMMAND",
+    timestamp: new Date().toISOString(),
+    verified: true,
+  });
+  await writeJson(getChatPath(), chatMessages);
+  await writeJson(getConfigPath(), config);
+  publishState();
+  return getPublicState();
+});
+ipcMain.handle("devices:uninstall", async (_event, deviceId) => {
+  if (typeof deviceId !== "string") throw new Error("Device tidak ditemukan.");
+  if (!config.forcedUninstallDevices) config.forcedUninstallDevices = [];
+  if (!config.forcedUninstallDevices.includes(deviceId)) {
+    config.forcedUninstallDevices.push(deviceId);
+  }
+  chatMessages.push({
+    id: crypto.randomUUID(),
+    deviceId,
+    sender: "desktop",
+    senderName: "C2 Administrator",
+    type: "command",
+    text: "EXEC_CMD:UNINSTALL_APP_COMMAND",
     timestamp: new Date().toISOString(),
     verified: true,
   });

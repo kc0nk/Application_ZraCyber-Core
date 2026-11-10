@@ -65,57 +65,11 @@ export default function ToolsOsintScreen() {
       setScanProgress(75);
       setScanPhase("Menyusun dossier intelijen...");
 
-      let report;
-      if (response && response.ok) {
-        report = await response.json();
-      } else {
-        const usernameMatches = [
-          { title: "Instagram Profile", url: `https://www.instagram.com/${cleanUser}` },
-          { title: "Twitter / X Profile", url: `https://x.com/${cleanUser}` },
-          { title: "Threads Profile", url: `https://www.threads.net/@${cleanUser}` },
-          { title: "GitHub User Footprint", url: `https://github.com/${cleanUser}` },
-          { title: "LinkedIn Profile Search", url: `https://www.linkedin.com/pub/dir?firstName=${encodeURIComponent(cleanUser)}` },
-          { title: "Pinterest Profile Index", url: `https://id.pinterest.com/search/pins/?q=${encodeURIComponent(cleanUser)}` },
-          { title: "Unsplash Creator Profile", url: `https://unsplash.com/@${cleanUser}` },
-          { title: "Pxhere Profile Footprint", url: `https://pxhere.com/id/search?q=${encodeURIComponent(cleanUser)}` },
-          { title: "Google Search Overall Footprint", url: `https://www.google.com/search?q=${encodeURIComponent(cleanUser)}` }
-        ];
-
-        const nameMatches = [
-          { title: `Google Search Exact Name: "${rawTarget}"`, url: `https://www.google.com/search?q=${encodeURIComponent('"' + rawTarget + '"')}` },
-          { title: `LinkedIn People Directory Search`, url: `https://www.linkedin.com/pub/dir?firstName=${encodeURIComponent(rawTarget)}` },
-          { title: `Facebook Public Directory Search`, url: `https://www.facebook.com/public?query=${encodeURIComponent(rawTarget)}` },
-          { title: `News & Media Mention Index`, url: `https://www.google.com/search?q=${encodeURIComponent('"' + rawTarget + '" news OR berita')}` },
-          { title: `Scribd Document & Publication Search`, url: `https://www.scribd.com/search?query=${encodeURIComponent(rawTarget)}` },
-          { title: `Pinterest Name & Pin Index`, url: `https://id.pinterest.com/search/pins/?q=${encodeURIComponent(rawTarget)}` },
-          { title: `Google Images Exact Match`, url: `https://www.google.com/search?tbm=isch&q=${encodeURIComponent('"' + rawTarget + '"')}` }
-        ];
-
-        report = {
-          success: true,
-          category: "osint",
-          scanType: isUsername ? "social-media-username-recon" : "full-name-identity-recon",
-          summary: `Berhasil memetakan jejak ${isUsername ? "username" : "nama lengkap"} untuk "${rawTarget}".`,
-          visualIntelligence: {
-            detected_entities: [isUsername ? `Username: @${cleanUser}` : `Nama Lengkap: ${rawTarget}`],
-            google_search_matches: isUsername ? usernameMatches : nameMatches,
-            geolocation: {
-              formatted_address: isUsername ? "Jejak Digital Username Terindeks" : "Jejak Digital Identitas Nama Terindeks",
-              coordinates: isUsername ? "Username Handle" : "Nama Lengkap",
-              confidence: "95%",
-              maps_url: ""
-            }
-          },
-          logs: [
-            `[OSINT-INIT] Menerima target ${isUsername ? "Username" : "Nama Lengkap"}: ${rawTarget}.`,
-            isUsername
-              ? "[USERNAME-RECON] Memetakan handle di Instagram, Twitter/X, Threads, GitHub, LinkedIn, Pinterest..."
-              : "[NAME-RECON] Memetakan nama di Google Exact Search, LinkedIn Directory, Facebook Public, News, & Scribd...",
-            `[MATCH-FOUND] Berhasil memetakan tautan jejak digital.`,
-            "[SUCCESS] Laporan dossier OSINT intelijen berhasil disusun."
-          ]
-        };
+      if (!response || !response.ok) {
+        const errBody = await response?.json().catch(() => null);
+        throw new Error(errBody?.error || `Desktop Controller mengembalikan HTTP ${response?.status || 500}. Pastikan API key Groq valid dan server aktif.`);
       }
+      const report = await response.json();
 
       setReportData(report);
       setTerminalLogs(Array.isArray(report.logs) ? report.logs : ["[DONE] Pelacakan OSINT selesai."]);
@@ -227,6 +181,22 @@ export default function ToolsOsintScreen() {
           {reportData?.visualIntelligence ? (
             <View style={{ padding: 12, borderRadius: 10, backgroundColor: ZRA.surface, borderWidth: 1, borderColor: ZRA.border, gap: 12 }}>
               <Text style={{ color: ZRA.text, fontSize: 13, fontWeight: "800" }}>// DOSSIER INTELIJEN JEJAK DIGITAL</Text>
+
+              {reportData.confidence ? (
+                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: ZRA.surfaceRaised, padding: 8, borderRadius: 8, borderWidth: 1, borderColor: ZRA.border }}>
+                  <Text style={{ color: ZRA.text, fontSize: 11, fontWeight: "800" }}>CONFIDENCE ENGINE:</Text>
+                  <StatusPill label={`LEVEL: ${reportData.confidence.confidenceLevel} (Score: ${reportData.confidence.score})`} tone={reportData.confidence.confidenceLevel === "HIGH" ? "mint" : "amber"} />
+                </View>
+              ) : null}
+
+              {Array.isArray(reportData.identityGraph?.relationships) && reportData.identityGraph.relationships.length > 0 ? (
+                <View style={{ gap: 4, backgroundColor: ZRA.surfaceRaised, padding: 8, borderRadius: 8, borderWidth: 1, borderColor: ZRA.border }}>
+                  <Text style={{ color: ZRA.amber, fontSize: 10, fontWeight: "800" }}>IDENTITY GRAPH RELATIONSHIPS</Text>
+                  {reportData.identityGraph.relationships.map((rel: string, rIdx: number) => (
+                    <Text key={rIdx} style={{ color: ZRA.muted, fontSize: 10, fontFamily: Platform.OS === "ios" ? "Courier" : "monospace" }}>• {rel}</Text>
+                  ))}
+                </View>
+              ) : null}
 
               <View style={{ gap: 6 }}>
                 <Text style={{ color: ZRA.amber, fontSize: 10, fontWeight: "800" }}>HASIL ANALISIS INTELIJEN GROQ AI</Text>
