@@ -151,10 +151,11 @@ async function loadConfig() {
       groqApiKey,
       updateRelease: saved.updateRelease && typeof saved.updateRelease.version === "string" ? saved.updateRelease : null,
       blockedDevices: Array.isArray(saved.blockedDevices) ? saved.blockedDevices.filter((item) => item && typeof item.id === "string") : [],
+      releasedDevices: Array.isArray(saved.releasedDevices) ? saved.releasedDevices.filter((item) => item && typeof item.id === "string") : [],
     };
   } catch (error) {
     if (error.code !== "ENOENT" && !(error instanceof SyntaxError)) throw error;
-    return { host: "127.0.0.1", port: DEFAULT_PORT, token: "", tokens: [], devices: [], anomalousDevices: [], blockedDevices: [], updateRelease: null, groqApiKey: "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" };
+    return { host: "127.0.0.1", port: DEFAULT_PORT, token: "", tokens: [], devices: [], anomalousDevices: [], blockedDevices: [], releasedDevices: [], updateRelease: null, groqApiKey: "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" };
   }
 }
 
@@ -193,6 +194,7 @@ function getPublicState() {
     devices: config.devices ?? (config.device ? [config.device] : []),
     anomalousDevices: config.anomalousDevices ?? [],
     blockedDevices: config.blockedDevices,
+    releasedDevices: config.releasedDevices ?? [],
     updateRelease: config.updateRelease ? { version: config.updateRelease.version, versionCode: config.updateRelease.versionCode, notes: config.updateRelease.notes, fileSize: config.updateRelease.fileSize, sha256: config.updateRelease.sha256, publishedAt: config.updateRelease.publishedAt, filename: config.updateRelease.filename } : null,
     history: history.slice(0, 100),
     chatMessages: chatMessages.slice(-MAX_CHAT_ITEMS),
@@ -686,8 +688,18 @@ ipcMain.handle("updates:publish", async (_event, metadata) => {
 });
 ipcMain.handle("devices:release", async (_event, deviceId) => {
   if (typeof deviceId !== "string") throw new Error("Device tidak ditemukan.");
-  config.devices = config.devices.filter((device) => device.id !== deviceId);
-  config.anomalousDevices = (config.anomalousDevices ?? []).filter((device) => device.id !== deviceId);
+  const device = config.devices.find((d) => d.id === deviceId) ?? (config.anomalousDevices ?? []).find((d) => d.id === deviceId);
+  config.devices = config.devices.filter((dev) => dev.id !== deviceId);
+  config.anomalousDevices = (config.anomalousDevices ?? []).filter((dev) => dev.id !== deviceId);
+  if (device) {
+    if (!config.releasedDevices) config.releasedDevices = [];
+    if (!config.releasedDevices.some((item) => item.id === deviceId)) {
+      config.releasedDevices.push({
+        ...device,
+        releasedAt: new Date().toISOString()
+      });
+    }
+  }
   const now = new Date().toISOString();
   config.tokens = config.tokens.map((item) => item.deviceId === deviceId ? { ...item, revokedAt: now } : item);
   chatMessages.push({

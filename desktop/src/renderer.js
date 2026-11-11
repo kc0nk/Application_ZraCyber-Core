@@ -688,7 +688,7 @@ document.querySelectorAll(".nav-button").forEach((button) => {
     const view = button.dataset.view;
     if (view !== "chat") stopChatPlayback();
     if (view !== "chat" && mediaRecorder && mediaRecorder.state !== "inactive") chatCancelRecBtn?.click();
-    document.querySelectorAll("#overview-view, #metadata-view, #devices-view, #live-map-view, #chat-view, #log-view, #llm-view, #hacker-view, #control-view").forEach((section) => {
+    document.querySelectorAll("#overview-view, #metadata-view, #devices-view, #live-map-view, #chat-view, #log-view, #network-flow-view, #hacker-view, #control-view").forEach((section) => {
       section.hidden = section.id !== `${view}-view`;
     });
     document.querySelectorAll(".nav-button").forEach((item) => item.classList.toggle("active", item === button));
@@ -697,6 +697,7 @@ document.querySelectorAll(".nav-button").forEach((button) => {
       if (view === "chat") renderChat(currentState);
       if (view === "log") renderLogs(currentState);
       if (view === "control") renderControlView(currentState);
+      if (view === "network-flow") renderNetworkFlow(currentState);
       if (view === "hacker") {
         renderHackerC2(currentState);
         requestAnimationFrame(() => requestAnimationFrame(() => hackerC2Map?.invalidateSize({ pan: false })));
@@ -1961,17 +1962,57 @@ if (c2CmdSendBtn) {
 
 function renderControlView(state) {
   const deviceSelect = document.querySelector("#control-target-device");
-  if (!deviceSelect) return;
+  if (deviceSelect) {
+    deviceSelect.replaceChildren(makeElement("option", "", "Pilih Target Device..."));
+    const devices = [
+      ...(state.devices ?? (state.device ? [state.device] : [])),
+      ...(state.anomalousDevices ?? [])
+    ];
+    for (const d of devices) {
+      const opt = makeElement("option", "", `${d.name} (${d.model}) · ${d.ip}`);
+      opt.value = d.id;
+      deviceSelect.append(opt);
+    }
+  }
 
-  deviceSelect.replaceChildren(makeElement("option", "", "Pilih Target Device..."));
-  const devices = [
-    ...(state.devices ?? (state.device ? [state.device] : [])),
-    ...(state.anomalousDevices ?? [])
-  ];
-  for (const d of devices) {
-    const opt = makeElement("option", "", `${d.name} (${d.model}) · ${d.ip}`);
-    opt.value = d.id;
-    deviceSelect.append(opt);
+  const releasedContainer = document.querySelector("#released-devices-container");
+  const releasedCountEl = document.querySelector("#released-device-count");
+  const releasedDevices = state.releasedDevices ?? [];
+  if (releasedCountEl) releasedCountEl.textContent = `${releasedDevices.length} perangkat`;
+  if (releasedContainer) {
+    if (releasedDevices.length === 0) {
+      releasedContainer.replaceChildren(makeElement("p", "muted", "Belum ada perangkat yang dihapus/dilepas."));
+    } else {
+      const rCards = [];
+      for (const d of releasedDevices) {
+        const card = makeElement("div", "", "", {
+          padding: "14px",
+          borderRadius: "12px",
+          background: "var(--surface)",
+          border: "1px solid var(--border)",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center"
+        });
+        const left = makeElement("div", "", "", { display: "grid", gap: "2px" });
+        left.append(
+          makeElement("strong", "", `${d.name} (${d.model})`, { color: "var(--text-main)", fontSize: "13px" }),
+          makeElement("span", "muted", `IMEI / ID: ${d.id} · IP: ${d.ip || "-"} · Dilepas: ${new Date(d.releasedAt || Date.now()).toLocaleDateString()}`, { fontSize: "11px", fontFamily: "monospace" })
+        );
+        const badge = makeElement("span", "badge", "DIHAPUS / DILEPAS", {
+          background: "rgba(239, 68, 68, 0.15)",
+          color: "#ef4444",
+          border: "1px solid rgba(239, 68, 68, 0.4)",
+          padding: "4px 8px",
+          borderRadius: "6px",
+          fontSize: "10px",
+          fontWeight: "800"
+        });
+        card.append(left, badge);
+        rCards.push(card);
+      }
+      releasedContainer.replaceChildren(...rCards);
+    }
   }
 }
 
@@ -2003,6 +2044,160 @@ if (triggerLockdownBtn) {
       }
     }
   });
+}
+
+function renderNetworkFlow(state) {
+  const container = document.querySelector("#network-fleet-container");
+  const nodeContainer = document.querySelector("#network-node-graph-container");
+  const countEl = document.querySelector("#network-device-count");
+  if (!container || !nodeContainer) return;
+
+  const devices = [
+    ...(state.devices ?? (state.device ? [state.device] : [])),
+    ...(state.anomalousDevices ?? [])
+  ];
+  if (countEl) countEl.textContent = `${devices.length} HP Terhubung`;
+
+  // 1. Render Dynamic Node Graph Pipeline
+  const nodes = [];
+
+  const ngrokNode = makeElement("div", "", "", {
+    padding: "14px 18px", borderRadius: "12px", background: "#0f172a", border: "1px solid #3b82f6", display: "grid", gap: "4px", minWidth: "170px", textAlign: "center", boxShadow: "0 0 20px rgba(59,130,246,0.25)"
+  });
+  ngrokNode.innerHTML = `<span style="font-size: 9px; color: #93c5fd; font-weight: 800; text-transform: uppercase; letter-spacing: 1px;">Public Tunnel Entry</span><strong style="color: #ffffff; font-size: 11px; font-family: monospace;">Ngrok URL</strong><span style="font-size: 9px; color: #34d399;">Active Gateway</span>`;
+  nodes.push(ngrokNode);
+
+  nodes.push(makeElement("div", "", "➔", { color: "var(--mint)", fontSize: "18px", fontWeight: "900" }));
+
+  const desktopNode = makeElement("div", "", "", {
+    padding: "14px 18px", borderRadius: "12px", background: "#064e3b", border: "1px solid var(--mint)", display: "grid", gap: "4px", minWidth: "170px", textAlign: "center", boxShadow: "0 0 20px rgba(52,211,153,0.3)"
+  });
+  desktopNode.innerHTML = `<span style="font-size: 9px; color: #a7f3d0; font-weight: 800; text-transform: uppercase; letter-spacing: 1px;">Control Plane</span><strong style="color: #ffffff; font-size: 11px; font-family: monospace;">Desktop API (4317)</strong><span style="font-size: 9px; color: #34d399;">Orchestrator Active</span>`;
+  nodes.push(desktopNode);
+
+  if (devices.length > 0) {
+    nodes.push(makeElement("div", "", "➔", { color: "var(--mint)", fontSize: "18px", fontWeight: "900" }));
+    const branchContainer = makeElement("div", "", "", { display: "flex", flexWrap: "wrap", gap: "12px", alignItems: "center", justifyContent: "center" });
+
+    for (const d of devices) {
+      const devNode = makeElement("div", "", "", {
+        padding: "12px 16px", borderRadius: "12px", background: d.isDemo ? "#451a03" : "#0f172a", border: d.isDemo ? "1px solid #fde047" : "1px solid var(--mint)", display: "grid", gap: "4px", minWidth: "160px", textAlign: "center", boxShadow: "0 4px 15px rgba(0,0,0,0.4)"
+      });
+      devNode.innerHTML = `
+        <span style="font-size: 9px; color: ${d.isDemo ? '#fde047' : '#34d399'}; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">${d.isDemo ? 'AKUN DEMO JURI' : 'TERDAFTAR'}</span>
+        <strong style="color: #ffffff; font-size: 12px;">📱 ${d.name}</strong>
+        <span style="font-size: 10px; color: #94a3b8; font-family: monospace;">IMEI: ${d.id.slice(0, 8)}...</span>
+      `;
+      branchContainer.append(devNode);
+    }
+    nodes.push(branchContainer);
+  } else {
+    nodes.push(makeElement("div", "", "➔", { color: "var(--muted)", fontSize: "18px", fontWeight: "900" }));
+    const emptyNode = makeElement("div", "", "", {
+      padding: "14px 18px", borderRadius: "12px", background: "#0f172a", border: "1px dashed var(--border)", display: "grid", gap: "4px", minWidth: "160px", textAlign: "center"
+    });
+    emptyNode.innerHTML = `<span style="font-size: 9px; color: var(--muted); font-weight: 800;">FLEET STATUS</span><strong style="color: var(--muted); font-size: 12px;">Menunggu Koneksi HP</strong>`;
+    nodes.push(emptyNode);
+  }
+
+  nodeContainer.replaceChildren(...nodes);
+
+  // 2. Render Cyberpunk HUD Fleet Cards
+  if (devices.length === 0) {
+    container.replaceChildren(makeElement("p", "muted", "Belum ada perangkat seluler terhubung."));
+    return;
+  }
+
+  const cards = [];
+  for (const d of devices) {
+    const card = makeElement("div", "", "", {
+      background: "#090d16",
+      borderRadius: "16px",
+      border: "1px solid rgba(52, 211, 153, 0.3)",
+      padding: "20px",
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr",
+      gap: "20px",
+      boxShadow: "0 8px 32px rgba(0,0,0,0.4), inset 0 0 20px rgba(52,211,153,0.03)",
+      position: "relative",
+      overflow: "hidden"
+    });
+
+    // Left HUD Column
+    const leftCol = makeElement("div", "", "", { display: "flex", flexDirection: "column", justifyContent: "space-between", gap: "14px" });
+
+    const headerRow = makeElement("div", "", "", { display: "flex", alignItems: "center", gap: "14px" });
+    const phoneIconBox = makeElement("div", "", "📱", {
+      width: "56px", height: "56px", borderRadius: "14px", background: "linear-gradient(135deg, rgba(52,211,153,0.2), rgba(59,130,246,0.2))", border: "1px solid rgba(52,211,153,0.4)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "26px", boxShadow: "0 0 15px rgba(52,211,153,0.2)"
+    });
+
+    const infoMeta = makeElement("div", "", "", { display: "grid", gap: "3px" });
+    infoMeta.append(
+      makeElement("strong", "", `${d.name} (${d.model})`, { color: "#ffffff", fontSize: "15px", fontWeight: "900", letterSpacing: "0.5px" }),
+      makeElement("span", "", `Platform: ${d.platform} · OS: ${d.osVersion}`, { color: "#94a3b8", fontSize: "11px" })
+    );
+    headerRow.append(phoneIconBox, infoMeta);
+
+    const badgeText = d.isDemo ? "AKUN DEMO JURI" : "TERDAFTAR";
+    const badgeColor = d.isDemo ? "#fde047" : "#34d399";
+    const badgeBg = d.isDemo ? "rgba(253, 224, 71, 0.15)" : "rgba(52, 211, 153, 0.15)";
+    const badgeBorder = d.isDemo ? "1px solid rgba(253, 224, 71, 0.4)" : "1px solid rgba(52, 211, 153, 0.4)";
+    const statusBadge = makeElement("div", "", badgeText, {
+      color: badgeColor, background: badgeBg, border: badgeBorder, padding: "6px 14px", borderRadius: "8px", fontSize: "12px", fontWeight: "900", letterSpacing: "1px", width: "fit-content", boxShadow: `0 0 10px ${badgeBg}`
+    });
+
+    const imeiBox = makeElement("div", "", "", { display: "grid", gap: "6px", background: "#030712", padding: "12px 14px", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.08)" });
+    const imeiHeader = makeElement("div", "", "", { display: "flex", justifyContent: "space-between", alignItems: "center" });
+    imeiHeader.append(
+      makeElement("span", "", "IMEI / HARDWARE ID", { color: "#64748b", fontSize: "10px", fontWeight: "800", letterSpacing: "1px" })
+    );
+
+    const imeiRow = makeElement("div", "", "", { display: "flex", justifyContent: "space-between", alignItems: "center", gap: "10px" });
+    const imeiText = makeElement("span", "", d.id, { color: "#34d399", fontSize: "11px", fontFamily: "monospace", fontWeight: "700" });
+
+    const copyBtn = makeElement("button", "button secondary small", "📋 Salin", { padding: "4px 10px", fontSize: "10px", fontWeight: "800", cursor: "pointer" });
+    copyBtn.type = "button";
+    copyBtn.addEventListener("click", () => {
+      void navigator.clipboard.writeText(d.id);
+      copyBtn.textContent = "✅ Tersalin!";
+      setTimeout(() => { copyBtn.textContent = "📋 Salin"; }, 2000);
+    });
+    imeiRow.append(imeiText, copyBtn);
+    imeiBox.append(imeiHeader, imeiRow);
+
+    leftCol.append(headerRow, statusBadge, imeiBox);
+
+    // Right HUD Column (Stacked Cards)
+    const rightCol = makeElement("div", "", "", { display: "grid", gap: "10px" });
+
+    const makeHudCard = (label, value, icon, isOnline = false) => {
+      const hud = makeElement("div", "", "", {
+        background: "#030712", padding: "12px 16px", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.08)", display: "flex", justifyContent: "space-between", alignItems: "center"
+      });
+      const col = makeElement("div", "", "", { display: "grid", gap: "2px" });
+      col.append(
+        makeElement("span", "", label, { color: "#64748b", fontSize: "10px", fontWeight: "800", letterSpacing: "1px" }),
+        makeElement("strong", "", value, { color: "#ffffff", fontSize: "13px", fontWeight: "800", fontFamily: label.includes("IP") ? "monospace" : "inherit" })
+      );
+      const rightIcon = makeElement("div", "", icon, { fontSize: "18px" });
+      if (isOnline) {
+        rightIcon.innerHTML = `<span style="background: rgba(52,211,153,0.15); color: #34d399; border: 1px solid rgba(52,211,153,0.4); padding: 4px 10px; borderRadius: 6px; fontSize: 10px; font-weight: 900; letter-spacing: 0.5px; box-shadow: 0 0 10px rgba(52,211,153,0.2);">ONLINE</span>`;
+      }
+      hud.append(col, rightIcon);
+      return hud;
+    };
+
+    const gpsStr = d.location ? `${d.location.latitude.toFixed(6)}, ${d.location.longitude.toFixed(6)}` : "Menunggu koordinat GPS";
+    rightCol.append(
+      makeHudCard("IP ADDRESS / TUNNEL", d.ip || "127.0.0.1", "", true),
+      makeHudCard("GPS TELEMETRI", gpsStr, "🎯"),
+      makeHudCard("AKTIVITAS AKTIF", d.activeActivity || "ZraCore Workspace", "💓")
+    );
+
+    card.append(leftCol, rightCol);
+    cards.push(card);
+  }
+  container.replaceChildren(...cards);
 }
 
 

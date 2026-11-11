@@ -29,7 +29,6 @@
         <button class="nav-button" data-view="live-map" type="button">Peta Live</button>
         <button class="nav-button" data-view="chat" type="button">Chat <span id="chat-nav-count">0</span></button>
         <button class="nav-button" data-view="log" type="button">Log</button>
-        <button class="nav-button" data-view="llm" type="button">AI LLM Studio</button>
         <button class="nav-button" data-view="control" type="button">Control</button>
         <button id="open-settings-nav" class="nav-button" type="button">Pengaturan</button>
       </nav>
@@ -106,7 +105,7 @@
       </div>
       <section id="chat-view" class="chat-view" hidden>
         <div class="view-heading">
-          <div><p class="eyebrow">04 / CHAT &amp; VOICE NOTE</p><h2>Pusat Verifikasi Chat &amp; VN.</h2></div>
+          <div><p class="eyebrow">04 / CHAT &amp; VOICE NOTE</p><h2>Chat</h2></div>
           <span id="chat-total-badge" class="device-limit">0 percakapan</span>
         </div>
         <div class="chat-container">
@@ -176,7 +175,7 @@
       </section>
       <section id="log-view" class="log-view" hidden>
         <div class="view-heading">
-          <div><p class="eyebrow">05 / MULTI-DEVICE AUDIT LOGS &amp; REPORTS</p><h2>Log &amp; laporan gabungan perangkat.</h2></div>
+          <div><p class="eyebrow">05 / MULTI-DEVICE AUDIT LOGS &amp; REPORTS</p><h2>Laporan</h2></div>
           <span class="device-limit">Sinkronisasi Multi-HP (HP A, HP B, dll.)</span>
         </div>
         <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px; margin-bottom: 14px; gap: 10px;">
@@ -191,46 +190,9 @@
         </div>
       </section>
 
-      <section id="llm-view" class="llm-view" hidden>
-        <div class="view-heading">
-          <div><p class="eyebrow">06 / AI LLM STUDIO</p><h2>Groq LLM Sandbox Studio.</h2></div>
-          <span class="device-limit">Model: openai/gpt-oss-120b</span>
-        </div>
-        <p class="muted">Konfigurasi Groq API Key dan uji coba prompt langsung ke model <code>openai/gpt-oss-120b</code>.</p>
-
-        <article class="card" style="margin-top: 16px; padding: 20px;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-            <div>
-              <p class="eyebrow" style="margin: 0;">GROQ CLOUD INFERENCE</p>
-              <h3 style="margin: 4px 0 0; color: var(--text-main); font-size: 15px;">Pengaturan Groq API Key</h3>
-            </div>
-            <span class="device-limit">Model: openai/gpt-oss-120b</span>
-          </div>
-          <p class="muted" style="margin-bottom: 12px; font-size: 12px;">Kelola Kunci API Groq Cloud untuk inferensi model <code>openai/gpt-oss-120b</code>.</p>
-          <div style="display: flex; gap: 10px;">
-            <input id="groq-api-key-input" type="password" style="flex: 1; padding: 10px 12px; font-family: monospace;" placeholder="gsk_..." />
-            <button id="groq-api-key-save-btn" class="button primary" type="button">Simpan API Key</button>
-          </div>
-          <p id="groq-api-key-notice" class="notice" role="status" style="margin-top: 8px; font-size: 11px;"></p>
-        </article>
-
-        <!-- Groq LLM Playground Chat -->
-        <article class="card" style="margin-top: 25px; padding: 24px;">
-          <h3 style="margin: 0 0 8px; color: var(--text-main);">Groq LLM (openai/gpt-oss-120b) Sandbox Studio</h3>
-          <p class="muted" style="margin-bottom: 14px;">Uji coba prompt atau pertanyaan langsung ke model Groq LLM.</p>
-          <div style="display: grid; gap: 10px;">
-            <textarea id="llm-prompt-input" rows="3" style="width: 100%; padding: 12px; border: 1px solid var(--input-border); border-radius: 10px; background: var(--input-bg); color: var(--text-main);" placeholder="Ketik prompt ke Groq LLM..."></textarea>
-            <button id="llm-send-btn" class="button primary" type="button" style="width: fit-content;">Kirim ke Groq LLM →</button>
-            <div id="llm-output-box" style="padding: 14px; border-radius: 10px; background: #000000; border: 1px solid var(--border); font-family: monospace; font-size: 12px; color: #34d399; min-height: 120px; max-height: 250px; overflow-y: auto;">
-              Output Groq LLM akan tampil di sini...
-            </div>
-          </div>
-        </article>
-      </section>
-
       <section id="control-view" class="control-view" hidden>
         <div class="view-heading">
-          <div><p class="eyebrow">07 / C2 DEVICE CONTROL &amp; LOCKDOWN</p><h2>Remote Lockdown &amp; Force Uninstall.</h2></div>
+          <div><p class="eyebrow">07 / C2 DEVICE CONTROL &amp; LOCKDOWN</p><h2>REMOTE</h2></div>
           <span class="device-limit">Active Enforcement</span>
         </div>
         <p class="muted">Kunci perangkat jarak jauh atau paksakan pencopotan aplikasi (*Force Uninstall / Persistent Redirect*).</p>
@@ -245,6 +207,21 @@
               </select>
               <button id="trigger-lockdown-btn" class="button reject" type="button" style="padding: 12px; font-weight: 800;">Jalankan Lockdown &amp; Force Uninstall Paksa</button>
               <p id="control-status-notice" class="notice" role="status" style="font-size: 11px;"></p>
+            </div>
+          </article>
+        </div>
+
+        <div style="display: grid; gap: 16px; margin-top: 20px;">
+          <article class="card" style="padding: 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+              <div>
+                <h3 style="margin: 0; color: var(--text-main); font-size: 15px;">Daftar Akun / Perangkat yang Dihapus (*Released Devices*)</h3>
+                <p class="muted" style="margin: 4px 0 0; font-size: 11px;">Riwayat perangkat seluler yang sebelumnya terdaftar atau anomali, namun telah dilepas (*released*) dari sistem.</p>
+              </div>
+              <span id="released-device-count" class="device-limit">0 perangkat</span>
+            </div>
+            <div id="released-devices-container" style="display: grid; gap: 10px;">
+              <p class="muted" style="font-style: italic;">Belum ada perangkat yang dihapus/dilepas.</p>
             </div>
           </article>
         </div>

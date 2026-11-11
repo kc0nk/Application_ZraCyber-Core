@@ -207,15 +207,6 @@ export default function ToolsOsintScreen() {
                   fontSize={12}
                 />
               </View>
-
-              <View style={{ gap: 6, borderTopWidth: 1, borderTopColor: ZRA.border, paddingTop: 10 }}>
-                <Text style={{ color: ZRA.amber, fontSize: 10, fontWeight: "800" }}>REFERENSI TAUTAN JEJAK DIGITAL</Text>
-                {reportData.visualIntelligence.google_search_matches?.map((match: any, idx: number) => (
-                  <Pressable key={idx} accessibilityRole="link" onPress={() => void Linking.openURL(match.url)} style={{ marginVertical: 2 }}>
-                    <Text style={{ color: ZRA.mint, fontSize: 11, textDecorationLine: "underline" }}>• {match.title || match.platform}</Text>
-                  </Pressable>
-                ))}
-              </View>
             </View>
           ) : (
             <Text style={{ color: ZRA.muted, fontSize: 11, fontStyle: "italic", textAlign: "center", paddingVertical: 12 }}>
