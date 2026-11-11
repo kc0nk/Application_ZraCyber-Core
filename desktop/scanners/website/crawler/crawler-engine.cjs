@@ -1,27 +1,11 @@
-const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
 const { extractAllResources } = require("./url-discovery.cjs");
 
-async function crawlWebsite(startUrl, origin, maxPages = 50) {
+async function crawlWebsite(startUrl, origin, maxPages = 30, cookieHeader = "") {
   const queue = [startUrl];
   const visited = new Set();
   const pages = [];
   const nodes = [];
   const edges = [];
-
-  const broadPaths = [
-    "/profil", "/struktur", "/berita", "/galeri", "/kontak", "/login", "/admin", "/api",
-    "/api/v1", "/api/v2", "/users", "/profile", "/settings", "/upload", "/auth", "/config",
-    "/server-status", "/graphql", "/docs", "/swagger", "/debug", "/register", "/forgot",
-    "/search", "/blog", "/news", "/contact", "/about", "/store", "/cart", "/checkout",
-    "/dashboard", "/portal", "/sitemap.xml", "/robots.txt", "/wp-login.php", "/administrator"
-  ];
-
-  for (const p of broadPaths) {
-    try {
-      const full = new URL(p, origin).toString();
-      if (!queue.includes(full)) queue.push(full);
-    } catch {}
-  }
 
   while (queue.length > 0 && pages.length < maxPages) {
     const current = queue.shift();
@@ -29,37 +13,64 @@ async function crawlWebsite(startUrl, origin, maxPages = 50) {
     visited.add(current);
 
     try {
-      const res = await fetch(current, {
+      if (new URL(current).origin !== origin) continue;
+    } catch {
+      continue;
+    }
+
+    try {
+      const res = await globalThis.fetch(current, {
         method: "GET",
-        headers: { "User-Agent": "ZraCore-Aggressive-WebCrawler/3.0" },
+        redirect: "manual",
+        headers: {
+          "User-Agent": "ZraCore-Passive-WebScanner/3.0",
+          ...(cookieHeader ? { Cookie: cookieHeader } : {})
+        },
         signal: AbortSignal.timeout(4000)
       }).catch(() => null);
 
-      if (res && res.ok) {
+      if (res && res.status >= 300 && res.status < 400) {
+        const location = res.headers.get("location");
+        if (location) {
+          try {
+            const nextUrl = new URL(location, current).toString();
+            if (new URL(nextUrl).origin === origin && !visited.has(nextUrl) && queue.length < 50) {
+              queue.push(nextUrl);
+            }
+          } catch {}
+        }
+      } else if (res && res.ok) {
         const html = await res.text().catch(() => "");
         const headersObj = {};
         res.headers.forEach((val, key) => { headersObj[key] = val; });
 
-        pages.push({ url: current, status: res.status, headers: headersObj, body: html });
+        pages.push({ url: current, status: res.status, headers: headersObj, body: html, reachable: true });
         const nodeId = `node-${visited.size}`;
         nodes.push({ id: nodeId, url: current, type: current === startUrl ? "root" : "endpoint" });
 
         const discoveredLinks = extractAllResources(html, current, origin);
         for (const link of discoveredLinks) {
-          if (!visited.has(link) && queue.length < 100) {
-            queue.push(link);
-            edges.push({ from: nodeId, to: link, relation: "links_to" });
+          if (!visited.has(link) && queue.length < 50) {
+            try {
+              if (new URL(link).origin === origin) {
+                queue.push(link);
+                edges.push({ from: nodeId, to: link, relation: "links_to" });
+              }
+            } catch {}
           }
         }
-      } else {
-        pages.push({ url: current, status: 200, headers: { "server": "nginx", "content-type": "text/html" }, body: `<html><body><h1>Endpoint ${current}</h1><form action="/login"><input type="password" name="pwd"/></form></body></html>` });
+      } else if (res) {
+        const html = await res.text().catch(() => "");
+        const headersObj = {};
+        res.headers.forEach((val, key) => { headersObj[key] = val; });
+        pages.push({ url: current, status: res.status, headers: headersObj, body: html, reachable: true });
         const nodeId = `node-${visited.size}`;
-        nodes.push({ id: nodeId, url: current, type: "endpoint" });
+        nodes.push({ id: nodeId, url: current, type: "endpoint_error" });
+      } else {
+        pages.push({ url: current, status: "unreachable", headers: {}, body: "", reachable: false });
       }
     } catch {
-      pages.push({ url: current, status: 200, headers: { "server": "nginx" }, body: `<html><body><h1>Endpoint ${current}</h1></body></html>` });
-      const nodeId = `node-${visited.size}`;
-      nodes.push({ id: nodeId, url: current, type: "endpoint" });
+      pages.push({ url: current, status: "unreachable", headers: {}, body: "", reachable: false });
     }
   }
 

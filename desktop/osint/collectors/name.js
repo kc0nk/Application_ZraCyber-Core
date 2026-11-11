@@ -12,11 +12,10 @@ async function collectName(name, aliases) {
 
   const results = [
     githubMatch,
-    { platform: "Google Exact Search", url: `https://www.google.com/search?q=${exactQuery}`, status: "found", evidence: { displayName: name, bio: "Google public search exact match index", avatar: "", publicLinks: [] } },
-    { platform: "LinkedIn Directory", url: `https://www.linkedin.com/pub/dir?firstName=${encodedName}`, status: "found", evidence: { displayName: name, bio: "LinkedIn professional directory search", avatar: "", publicLinks: [] } },
-    { platform: "Facebook Public Directory", url: `https://www.facebook.com/public?query=${encodedName}`, status: "found", evidence: { displayName: name, bio: "Facebook public profile directory search", avatar: "", publicLinks: [] } },
-    { platform: "Scribd Document Index", url: `https://www.scribd.com/search?query=${encodedName}`, status: "found", evidence: { displayName: name, bio: "Scribd document & academic publication search", avatar: "", publicLinks: [] } },
-    { platform: "Pinterest Name Index", url: `https://id.pinterest.com/search/pins/?q=${encodedName}`, status: "found", evidence: { displayName: name, bio: "Pinterest visual pin & name index", avatar: "", publicLinks: [] } }
+    { platform: "Google Exact Search", url: `https://www.google.com/search?q=${exactQuery}`, status: "unverified_search_index", evidence: { displayName: name, bio: "Buka pencarian exact match Google", avatar: "", publicLinks: [] } },
+    { platform: "LinkedIn Directory", url: `https://www.linkedin.com/pub/dir?firstName=${encodedName}`, status: "unverified_search_index", evidence: { displayName: name, bio: "Buka direktori profesional LinkedIn", avatar: "", publicLinks: [] } },
+    { platform: "Facebook Public Directory", url: `https://www.facebook.com/public?query=${encodedName}`, status: "unverified_search_index", evidence: { displayName: name, bio: "Buka direktori profil publik Facebook", avatar: "", publicLinks: [] } },
+    { platform: "Scribd Document Index", url: `https://www.scribd.com/search?query=${encodedName}`, status: "unverified_search_index", evidence: { displayName: name, bio: "Buka indeks dokumen publik Scribd", avatar: "", publicLinks: [] } }
   ];
 
   return results.filter(Boolean);

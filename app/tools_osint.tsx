@@ -13,6 +13,7 @@ export default function ToolsOsintScreen() {
   const { ZRA, styles } = useZraTheme();
   const { apiUrl, websiteAuditHeaders, history, addHistory, clearHistory } = useAppState();
 
+  const [searchType, setSearchType] = useState<"name" | "username" | "email">("name");
   const [targetUsername, setTargetUsername] = useState("");
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState("");
@@ -20,31 +21,27 @@ export default function ToolsOsintScreen() {
   const [scanProgress, setScanProgress] = useState<number | null>(null);
   const [scanPhase, setScanPhase] = useState("");
   const [terminalLogs, setTerminalLogs] = useState([
-    "[READY] Social Media & Identity OSINT Engine ready.",
-    "[IDLE] Masukkan Nama Lengkap atau @username untuk memetakan jejak digital...",
+    "[READY] Factual Identity OSINT Engine ready.",
+    "[IDLE] Pilih jenis target dan masukkan kata kunci untuk memetakan jejak digital...",
   ]);
   const osintHistory = filterAuditHistory(history, "osint");
 
   const handleRunOsint = async () => {
     const rawTarget = targetUsername.trim();
     if (!rawTarget) {
-      setFeedback("Masukkan Nama Lengkap atau @username target terlebih dahulu.");
+      setFeedback("Masukkan kata kunci target terlebih dahulu.");
       return;
     }
 
-    const isUsername = rawTarget.startsWith("@") || !rawTarget.includes(" ");
-    const cleanUser = rawTarget.replace(/^@/, "");
-
     setBusy(true);
     setReportData(null);
-    setFeedback(`Memetakan jejak digital (${isUsername ? "Username @" + cleanUser : "Nama Lengkap: " + rawTarget})...`);
+    setFeedback(`Memetakan jejak digital (${searchType.toUpperCase()}: ${rawTarget})...`);
     setScanProgress(25);
-    setScanPhase(isUsername ? "Searching username footprint..." : "Searching full name footprint...");
+    setScanPhase(`Searching ${searchType} footprint...`);
     setTerminalLogs([
-      `[START] OSINT ${isUsername ? "Username" : "Full Name"} Reconnaissance: ${rawTarget}`,
-      isUsername
-        ? "[ANALYSIS] Memetakan handle di Instagram, Twitter/X, Threads, GitHub, LinkedIn, Pinterest..."
-        : "[ANALYSIS] Memetakan nama lengkap di Google Exact Search, LinkedIn Directory, Facebook Public, News, & Scribd...",
+      `[START] OSINT ${searchType.toUpperCase()} Reconnaissance: ${rawTarget}`,
+      `[NORMALIZER] Target diproses sebagai ${searchType.toUpperCase()}.`,
+      `[COLLECTOR] Mengumpulkan profil terverifikasi dan indeks pencarian publik...`
     ]);
 
     try {
@@ -58,12 +55,13 @@ export default function ToolsOsintScreen() {
         },
         body: JSON.stringify({
           category: "osint",
+          searchType,
           target: rawTarget,
         }),
       }).catch(() => null);
 
       setScanProgress(75);
-      setScanPhase("Menyusun dossier intelijen...");
+      setScanPhase("Menyusun dossier intelijen faktual...");
 
       if (!response || !response.ok) {
         const errBody = await response?.json().catch(() => null);
@@ -75,14 +73,14 @@ export default function ToolsOsintScreen() {
       setTerminalLogs(Array.isArray(report.logs) ? report.logs : ["[DONE] Pelacakan OSINT selesai."]);
       setScanProgress(100);
       setScanPhase("Pelacakan selesai.");
-      setFeedback(`Analisis jejak OSINT "${rawTarget}" selesai.`);
+      setFeedback(`Analisis OSINT "${rawTarget}" selesai.`);
 
       addHistory({
         kind: "SCAN",
-        title: `OSINT Target: ${rawTarget}`,
-        subtitle: `Digital Footprint Mapped`,
+        title: `OSINT Target (${searchType}): ${rawTarget}`,
+        subtitle: `Identity Assessment Complete`,
         status: "completed",
-        payload: { action: "scan_osint", category: isUsername ? "username" : "name" },
+        payload: { action: "scan_osint", category: searchType },
         result: report,
       });
     } catch (error: any) {
@@ -103,7 +101,7 @@ export default function ToolsOsintScreen() {
           <Text style={{ color: ZRA.mint, fontSize: 13, fontWeight: "700" }}>Kembali ke Ringkasan</Text>
         </Pressable>
 
-        <BrandHeader eyebrow="ZRACORE / TOOLKIT" title="OSINT Identity &amp; Username." subtitle="Modul intelijen jejak digital nama lengkap dan username media sosial." />
+        <BrandHeader eyebrow="ZRACORE / TOOLKIT" title="OSINT Identity &amp; Recon." subtitle="Modul investigasi jejak digital faktual tanpa biografi spekulatif." />
 
         <Panel accent>
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
@@ -112,33 +110,56 @@ export default function ToolsOsintScreen() {
                 <Ionicons name="people-outline" size={20} color={ZRA.mint} />
               </View>
               <View>
-                <Text style={styles.panelTitle}>OSINT RECONNAISSANCE</Text>
-                <Text style={{ color: ZRA.muted, fontSize: 11, fontWeight: "600" }}>Nama Lengkap &amp; Username Recon</Text>
+                <Text style={styles.panelTitle}>FACTUAL OSINT RECON</Text>
+                <Text style={{ color: ZRA.muted, fontSize: 11, fontWeight: "600" }}>Mode Faktual Tanpa Spekulasi</Text>
               </View>
             </View>
-            <StatusPill label="IDENTITY RECON" tone="mint" />
+            <StatusPill label="PROVENANCE AUDIT" tone="mint" />
           </View>
         </Panel>
 
-        <SectionHeading label="Target Nama Lengkap / Username" />
+        <SectionHeading label="Pilih Jenis Target &amp; Kata Kunci" />
         <Panel style={{ gap: 12 }}>
+          {/* Mode Selector Buttons */}
+          <View style={{ flexDirection: "row", gap: 8 }}>
+            {(["name", "username", "email"] as const).map((type) => (
+              <Pressable
+                key={type}
+                onPress={() => setSearchType(type)}
+                style={{
+                  flex: 1,
+                  paddingVertical: 10,
+                  borderRadius: 10,
+                  backgroundColor: searchType === type ? ZRA.mint : ZRA.surface,
+                  borderWidth: 1,
+                  borderColor: searchType === type ? ZRA.mint : ZRA.border,
+                  alignItems: "center",
+                }}
+              >
+                <Text style={{ color: searchType === type ? "#0b1016" : ZRA.text, fontSize: 11, fontWeight: "800" }}>
+                  {type === "name" ? "Nama Lengkap" : type === "username" ? "@Username" : "Email"}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+
           <Field
-            label="Nama Lengkap / Username Target"
+            label={searchType === "name" ? "Nama Lengkap Target" : searchType === "username" ? "Username Target (@handle)" : "Alamat Email Target"}
             value={targetUsername}
             onChangeText={setTargetUsername}
-            placeholder="nama lengkap dan username"
+            placeholder={searchType === "name" ? "contoh: Zhafran Dzaky" : searchType === "username" ? "contoh: zhafrand_ak" : "contoh: user@domain.com"}
             autoCapitalize="none"
           />
 
           <PrimaryButton
-            label={busy ? "Memetakan Jejak Digital..." : "Mulai Lacak Target"}
+            label={busy ? "Memetakan Jejak..." : "Mulai Lacak Target"}
             icon="search-outline"
             onPress={() => void handleRunOsint()}
             disabled={busy || !targetUsername.trim()}
           />
 
           {feedback ? (
-            <Text style={{ color: feedback.includes("Selesai") || feedback.includes("berhasil") || feedback.includes("selesai") ? ZRA.mint : ZRA.amber, fontSize: 12, fontWeight: "700", textAlign: "center" }}>
+            <Text style={{ color: feedback.includes("selesai") || feedback.includes("berhasil") ? ZRA.mint : ZRA.amber, fontSize: 12, fontWeight: "700", textAlign: "center" }}>
               {feedback}
             </Text>
           ) : null}
@@ -177,10 +198,10 @@ export default function ToolsOsintScreen() {
         </Panel>
 
         <Panel style={{ gap: 14, backgroundColor: ZRA.surfaceRaised }}>
-          <SectionHeading label="Hasil/Output" />
+          <SectionHeading label="Hasil/Output Faktual" />
           {reportData?.visualIntelligence ? (
             <View style={{ padding: 12, borderRadius: 10, backgroundColor: ZRA.surface, borderWidth: 1, borderColor: ZRA.border, gap: 12 }}>
-              <Text style={{ color: ZRA.text, fontSize: 13, fontWeight: "800" }}>// DOSSIER INTELIJEN JEJAK DIGITAL</Text>
+              <Text style={{ color: ZRA.text, fontSize: 13, fontWeight: "800" }}>// DOSSIER INTELIJEN FAKTUAL</Text>
 
               {reportData.confidence ? (
                 <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: ZRA.surfaceRaised, padding: 8, borderRadius: 8, borderWidth: 1, borderColor: ZRA.border }}>
@@ -199,7 +220,7 @@ export default function ToolsOsintScreen() {
               ) : null}
 
               <View style={{ gap: 6 }}>
-                <Text style={{ color: ZRA.amber, fontSize: 10, fontWeight: "800" }}>HASIL ANALISIS INTELIJEN GROQ AI</Text>
+                <Text style={{ color: ZRA.amber, fontSize: 10, fontWeight: "800" }}>HASIL ANALISIS FAKTUAL GROQ AI</Text>
                 <MarkdownRenderer
                   content={reportData.visualIntelligence.geolocation?.formatted_address || reportData.summary || "Dossier terindeks."}
                   textColor={ZRA.text}
@@ -207,10 +228,20 @@ export default function ToolsOsintScreen() {
                   fontSize={12}
                 />
               </View>
+
+              <View style={{ gap: 6, borderTopWidth: 1, borderTopColor: ZRA.border, paddingTop: 10 }}>
+                <Text style={{ color: ZRA.amber, fontSize: 10, fontWeight: "800" }}>PROFIL &amp; INDEKS PENCARIAN PUBLIK</Text>
+                {reportData.visualIntelligence.google_search_matches?.map((match: any, idx: number) => (
+                  <Pressable key={idx} accessibilityRole="link" onPress={() => void Linking.openURL(match.url)} style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginVertical: 3 }}>
+                    <Text style={{ color: ZRA.mint, fontSize: 11, textDecorationLine: "underline", flex: 1 }}>• {match.title || match.platform}</Text>
+                    <StatusPill label={match.status === "found" ? "VERIFIED" : "DIREKTORI"} tone={match.status === "found" ? "mint" : "amber"} />
+                  </Pressable>
+                ))}
+              </View>
             </View>
           ) : (
             <Text style={{ color: ZRA.muted, fontSize: 11, fontStyle: "italic", textAlign: "center", paddingVertical: 12 }}>
-              Belum ada hasil pelacakan. Masukkan nama lengkap atau @username dan mulai lacak di atas.
+              Belum ada hasil pelacakan. Pilih jenis target dan mulai lacak di atas.
             </Text>
           )}
         </Panel>

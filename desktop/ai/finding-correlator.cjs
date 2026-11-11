@@ -1,13 +1,17 @@
 const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
 
 async function correlateFindingsWithAi(urlGraph, ruleFindings, apiKey) {
-  if (!apiKey) return ruleFindings;
+  if (!apiKey || !Array.isArray(ruleFindings) || ruleFindings.length === 0) return ruleFindings;
   try {
-    const prompt = `[ZRACORE WEBSITE PENTEST - AI CORRELATOR]
-URL Graph & Rule Findings:
-${JSON.stringify({ urlGraph, ruleFindings }, null, 2)}
+    const prompt = `[ZRACORE WEBSITE PENTEST - FACTUAL AI CORRELATOR]
+Berikut adalah daftar temuan berbasis bukti asli dari Security Rule Engine:
+${JSON.stringify(ruleFindings, null, 2)}
 
-Sebagai Senior Web Security Auditor, hubungkan temuan-temuan di atas, jelaskan root cause, dan prioritaskan remediation dalam format JSON array of objects yang valid (tanpa markdown backticks), dengan properti: title, severity, cwe, evidence, location, check, summary. Bahasa Indonesia.`;
+Sebagai Senior Web Security Auditor, rangkum dan berikan penjelasan ringkas mengenai temuan berbasis bukti di atas.
+ATURAN KETAT:
+1. JANGAN menambah, mengurangi, atau mengubah daftar temuan di atas.
+2. JANGAN mengubah tingkat severity (Critical/High/Medium/Low/Info) yang telah ditentukan oleh Rule Engine.
+3. Kembalikan daftar temuan yang persis sama dengan menambahkan penjelasan ringkas pada atribut summary. Format JSON array. Bahasa Indonesia.`;
 
     const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
@@ -26,7 +30,7 @@ Sebagai Senior Web Security Auditor, hubungkan temuan-temuan di atas, jelaskan r
     const end = content.lastIndexOf("]") + 1;
     if (start !== -1 && end !== -1) {
       const parsed = JSON.parse(content.slice(start, end));
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (Array.isArray(parsed) && parsed.length === ruleFindings.length) return parsed;
     }
   } catch {}
   return ruleFindings;

@@ -25,6 +25,11 @@
     },
     "files": [
       "src/**/*",
+      "scanners/**/*",
+      "osint/**/*",
+      "core/**/*",
+      "ai/**/*",
+      "reports/**/*",
       "package.json"
     ],
     "linux": {
