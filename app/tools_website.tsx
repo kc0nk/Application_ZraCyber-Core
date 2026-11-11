@@ -180,7 +180,7 @@ export default function ToolsWebsiteScreen() {
         ? "[AUTH] Kredensial hanya dikirim untuk form login POST same-origin; tidak dimasukkan ke laporan."
         : activeProbe
           ? "[SAFE-PROBE] Satu marker teks inert; hanya localhost/loopback, tanpa kode executable atau form."
-          : "[ATTACK] Memulai fuzzing parameter aktif; payload XSS, SQLi, LFI, dan RCE akan ditembakkan secara agresif.",
+          : "[ACTIVE-FUZZING] Menguji parameter query URL & form inputs dengan payload SQLi, XSS, LFI, & SSRF...",
     ]);
 
     try {
@@ -248,7 +248,7 @@ export default function ToolsWebsiteScreen() {
         <BrandHeader
           eyebrow="ZRACORE / TOOLKIT"
           title="Website Pentest."
-          subtitle="Audit aktif agresif URL publik yang Anda berwenang uji: injeksi parameter otomatis untuk mendeteksi kerentanan kritis."
+          subtitle="Pengujian aktif parameter URL dan input form otomatis dengan payload SQLi, XSS, dan Path Traversal."
         />
 
         <Panel accent>

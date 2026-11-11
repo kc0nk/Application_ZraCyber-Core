@@ -3,6 +3,7 @@ const { checkScope } = require("./scope-manager.cjs");
 const { analyzeDnsRecon } = require("./recon/dns-analyzer.cjs");
 const { crawlWebsite } = require("./crawler/crawler-engine.cjs");
 const { runMasterWebRules } = require("./rules/master-web-rules.cjs");
+const { runActiveFuzzer } = require("./fuzzing/active-fuzzer.cjs");
 const { correlateFindingsWithAi } = require("../../ai/finding-correlator.cjs");
 const { generateWriteupReport } = require("../../ai/writeup-generator.cjs");
 const { calculateRisk } = require("../../core/risk-engine.cjs");
@@ -49,15 +50,18 @@ async function runWebsiteOrchestrator(body, apiKey) {
     ruleFindings.push(...findings);
   }
 
+  const activeInjectionFindings = await runActiveFuzzer(reachablePages, target.origin);
+  ruleFindings.push(...activeInjectionFindings);
+
   if (ruleFindings.length === 0) {
     ruleFindings.push({
-      title: "Secure Headers & TLS Baseline Audit",
+      title: "Secure Headers & Active Fuzzing Baseline Audit",
       severity: "Info",
       cwe: "CWE-693",
-      evidence: [`${reachablePages.length} halaman berhasil di-crawl dan diinspeksi`],
+      evidence: [`${reachablePages.length} halaman berhasil di-crawl dan diuji aktif`],
       location: target.origin,
-      check: "Security Rule Engine - Baseline Audit Pasif",
-      summary: `Target web ${target.origin} berhasil di-crawl (${reachablePages.length} halaman dijangkau). Tidak ditemukan indikasi celah kritis pada audit pasif.`
+      check: "Security Rule Engine - Active Fuzzing Baseline",
+      summary: `Target web ${target.origin} berhasil diuji (${reachablePages.length} halaman dijangkau). Pengujian parameter aktif dan audit pasif tidak menemukan indikasi celah kritis.`
     });
   }
 
