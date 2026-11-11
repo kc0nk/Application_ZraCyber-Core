@@ -1083,7 +1083,7 @@ function createApiServer({
     if (pathname === "/tools/vps/scan" && request.method === "POST") {
       try {
         const body = await readJson(request, 64 * 1024);
-        const apiKey = getGroqApiKey?.()?.trim() || process.env.GROQ_API_KEY || "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";
+        const apiKey = getGroqApiKey?.()?.trim() || process.env.GROQ_API_KEY || "";
         const report = await runVpsOrchestrator(body, apiKey);
         sendJson(response, 200, report);
       } catch (error) {

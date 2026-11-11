@@ -2,13 +2,14 @@ const sqliPayloads = require("../payloads/sqli-payloads.cjs");
 const xssPayloads = require("../payloads/xss-payloads.cjs");
 const rcePayloads = require("../payloads/rce-payloads.cjs");
 const lfiPayloads = require("../payloads/lfi-payloads.cjs");
+const { applySsrfRules } = require("./ssrf-rules.cjs");
+const { applyAuthRules } = require("./auth-rules.cjs");
 
 function runMasterWebRules(url, htmlContent, headers = {}, status = 200) {
   const findings = [];
   const lowerHtml = (htmlContent || "").toLowerCase();
   const lowerUrl = (url || "").toLowerCase();
 
-  // 1. ACCESS CONTROL (Exposed Admin - ONLY if HTTP 200 OK)
   if (status === 200 && (lowerUrl.includes("/admin") || lowerUrl.includes("/administrator") || lowerUrl.includes("/dashboard/settings"))) {
     findings.push({
       title: "Exposed Administrative Interface / Endpoint (HTTP 200 OK)",
@@ -21,7 +22,6 @@ function runMasterWebRules(url, htmlContent, headers = {}, status = 200) {
     });
   }
 
-  // 2. INJECTIONS - Passive Indicator Match
   for (const item of sqliPayloads) {
     if (lowerHtml.includes(item.indicator.toLowerCase())) {
       findings.push({
@@ -52,7 +52,24 @@ function runMasterWebRules(url, htmlContent, headers = {}, status = 200) {
     }
   }
 
-  // 3. SENSITIVE FILES - ONLY if HTTP 200 OK
+  for (const item of lfiPayloads) {
+    if (htmlContent.includes(item.indicator)) {
+      findings.push({
+        title: item.title,
+        severity: item.severity,
+        cwe: item.cwe,
+        evidence: [`Payload tested: ${item.payload}`, `Indicator matched: ${item.indicator}`],
+        location: url,
+        check: "File Validation - Path Traversal / LFI",
+        summary: "Aplikasi merefleksikan konten file sensitif sistem saat parameter path traversal diuji."
+      });
+      break;
+    }
+  }
+
+  findings.push(...applySsrfRules(url, htmlContent));
+  findings.push(...applyAuthRules(url, htmlContent, headers));
+
   if (status === 200 && (lowerUrl.includes(".git") || lowerUrl.includes(".env") || lowerUrl.includes("backup.sql"))) {
     findings.push({
       title: "Exposed Sensitive Configuration / Version Control File (HTTP 200 OK)",
@@ -65,7 +82,6 @@ function runMasterWebRules(url, htmlContent, headers = {}, status = 200) {
     });
   }
 
-  // 4. SECURITY HEADERS
   const csp = headers["content-security-policy"];
   if (!csp) {
     findings.push({

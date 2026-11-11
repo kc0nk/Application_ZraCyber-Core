@@ -1,8 +1,10 @@
 const net = require("node:net");
 
-async function scanPorts(ip, ports = [22, 80, 443, 3306, 5432, 6379, 8080]) {
+async function scanPorts(ip, targetPort = 22, additionalPorts = [80, 443, 3306, 5432, 8080]) {
+  const portsToScan = Array.from(new Set([Number(targetPort) || 22, ...additionalPorts]));
   const openPorts = [];
-  for (const port of ports) {
+
+  for (const port of portsToScan) {
     const isOpen = await new Promise((resolve) => {
       const socket = new net.Socket();
       socket.setTimeout(2000);
