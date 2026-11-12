@@ -165,7 +165,7 @@ export default function ToolsAppScreen() {
                 <Text style={{ color: ZRA.muted, fontSize: 11, fontWeight: "600" }}>MASTG · Biner Statis</Text>
               </View>
             </View>
-            <StatusPill label="REAL BACKEND" tone="mint" />
+            <StatusPill label="LLM" tone="mint" />
           </View>
         </Panel>
 

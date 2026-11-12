@@ -22,7 +22,7 @@ async function runWebsiteOrchestrator(body, apiKey) {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded", "User-Agent": "ZraCore-WebScanner/3.0" },
         body: new URLSearchParams({ username: body.loginUser, password: body.loginPass }).toString(),
-        signal: AbortSignal.timeout(5000)
+        signal: AbortSignal.timeout(4000)
       }).catch(() => null);
 
       if (loginRes) {
@@ -36,12 +36,12 @@ async function runWebsiteOrchestrator(body, apiKey) {
   }
 
   const dns = await analyzeDnsRecon(target.hostname);
-  const crawlResult = await crawlWebsite(target.url, target.origin, 30, sessionCookie);
+  const crawlResult = await crawlWebsite(target.url, target.origin, 8, sessionCookie);
   const urlGraph = { nodes: crawlResult.nodes, edges: crawlResult.edges };
 
   const reachablePages = crawlResult.pages.filter(p => p.reachable);
   if (reachablePages.length === 0) {
-    throw new Error(`Target web ${target.url} tidak dapat dijangkau atau menolak koneksi. Pastikan URL dan server target aktif.`);
+    throw new Error(`Target web ${target.url} tidak dapat dijangkau atau menolak koneksi (Timeout/SSL Error).`);
   }
 
   let ruleFindings = [];

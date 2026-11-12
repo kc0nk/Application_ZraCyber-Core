@@ -1,31 +1,31 @@
 function generateIdentityReport(target, profiles, graph, correlation, confidence, aiAnalysis) {
-  const matches = profiles.map(p => ({ title: `${p.platform} - ${p.displayName || p.username}`, url: p.url }));
+  const matches = profiles.map(p => ({
+    title: `${p.platform} - ${p.evidence?.displayName || target.rawQuery}`,
+    url: p.url,
+    status: p.status || "UNVERIFIED"
+  }));
+
   return {
     success: true,
     category: "osint",
-    scanType: "identity-graph-recon",
-    summary: `Berhasil memetakan rekon identitas untuk ${target.rawQuery}. Confidence: ${confidence.confidenceLevel}`,
+    scanType: "identity-graph-recon-factual",
+    summary: `Rekon identitas faktual untuk ${target.rawQuery}. Confidence: ${confidence.confidenceLevel}`,
     visualIntelligence: {
       detected_entities: [target.username ? `Username: @${target.username}` : `Target: ${target.rawQuery}`],
       google_search_matches: matches,
-      geolocation: {
-        formatted_address: aiAnalysis,
-        coordinates: target.username || target.name || "Identity Pivot",
-        confidence: confidence.confidenceLevel,
-        maps_url: ""
-      }
+      geolocation: null
     },
     identityGraph: graph,
     correlation,
     confidence,
     logs: [
-      `[OSINT-INIT] Target normalizer memproses: ${target.rawQuery}`,
-      `[COLLECTOR] Mengumpulkan profil publik dari GitHub, Reddit, GitLab, dan web.`,
-      `[GRAPH] Membangun identity graph dengan ${profiles.length} profil terkait.`,
-      `[CONFIDENCE] Confidence engine menentukan tingkat kepercayaan: ${confidence.confidenceLevel}.`,
-      `[SUCCESS] Laporan dossier OSINT intelijen berhasil disusun.`
+      `[OSINT-INIT] Target normalizer memproses: ${target.rawQuery} (Type: ${target.searchType})`,
+      `[COLLECTOR] Memindai matriks platform publik (GitHub, Reddit, GitLab, HuggingFace, dll.).`,
+      `[GRAPH] Membangun identity graph dari evidence terverifikasi.`,
+      `[CONFIDENCE] Confidence engine menghitung skor berbasis bobot: ${confidence.score} (${confidence.confidenceLevel}).`,
+      `[SUCCESS] Laporan dossier OSINT intelijen faktual berhasil disusun.`
     ],
-    limitations: "Pencarian jejak digital dilakukan secara publik tanpa meretas privasi pengguna."
+    limitations: "Pencarian jejak digital dilakukan secara publik dan berbasis evidence terverifikasi tanpa asumsi spekulatif."
   };
 }
 

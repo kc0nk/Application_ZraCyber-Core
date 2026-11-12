@@ -101,7 +101,7 @@ export default function ToolsOsintScreen() {
           <Text style={{ color: ZRA.mint, fontSize: 13, fontWeight: "700" }}>Kembali ke Ringkasan</Text>
         </Pressable>
 
-        <BrandHeader eyebrow="ZRACORE / TOOLKIT" title="OSINT Identity &amp; Recon." subtitle="Modul investigasi jejak digital faktual tanpa biografi spekulatif." />
+        <BrandHeader eyebrow="ZRACORE / TOOLKIT" title="OSINT" subtitle="Modul investigasi jejak digital faktual tanpa biografi spekulatif." />
 
         <Panel accent>
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
@@ -110,11 +110,11 @@ export default function ToolsOsintScreen() {
                 <Ionicons name="people-outline" size={20} color={ZRA.mint} />
               </View>
               <View>
-                <Text style={styles.panelTitle}>FACTUAL OSINT RECON</Text>
+                <Text style={styles.panelTitle}>OSINT</Text>
                 <Text style={{ color: ZRA.muted, fontSize: 11, fontWeight: "600" }}>Mode Faktual Tanpa Spekulasi</Text>
               </View>
             </View>
-            <StatusPill label="PROVENANCE AUDIT" tone="mint" />
+            <StatusPill label="INTEL" tone="mint" />
           </View>
         </Panel>
 
@@ -130,13 +130,13 @@ export default function ToolsOsintScreen() {
                   flex: 1,
                   paddingVertical: 10,
                   borderRadius: 10,
-                  backgroundColor: searchType === type ? ZRA.mint : ZRA.surface,
+                  backgroundColor: searchType === type ? "#2563eb" : ZRA.surface,
                   borderWidth: 1,
-                  borderColor: searchType === type ? ZRA.mint : ZRA.border,
+                  borderColor: searchType === type ? "#2563eb" : ZRA.border,
                   alignItems: "center",
                 }}
               >
-                <Text style={{ color: searchType === type ? "#0b1016" : ZRA.text, fontSize: 11, fontWeight: "800" }}>
+                <Text style={{ color: searchType === type ? "#ffffff" : ZRA.text, fontSize: 11, fontWeight: "800" }}>
                   {type === "name" ? "Nama Lengkap" : type === "username" ? "@Username" : "Email"}
                 </Text>
               </Pressable>

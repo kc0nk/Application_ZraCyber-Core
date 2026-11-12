@@ -1,15 +1,9 @@
-const { checkGithub } = require("../sources/github");
-const { checkReddit } = require("../sources/reddit");
-const { checkGitlab } = require("../sources/gitlab");
+const { checkPlatformMatrix } = require("../sources/platform-matrix.cjs");
 
 async function collectUsername(username) {
   if (!username) return [];
-  const results = await Promise.all([
-    checkGithub(username),
-    checkReddit(username),
-    checkGitlab(username)
-  ]);
-  return results.filter(Boolean);
+  const results = await checkPlatformMatrix(username);
+  return results;
 }
 
 module.exports = { collectUsername };
