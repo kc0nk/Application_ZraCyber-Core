@@ -765,7 +765,7 @@ function renderLogs(state) {
       card.append(sub);
     }
 
-    const creatorInfo = h.payload?.target || h.payload?.domain || h.payload?.fileName || h.payload?.appName || "Perangkat Mobile (HP)";
+    const creatorInfo = h.deviceName || h.senderName || h.deviceModel || h.payload?.deviceName || "Perangkat Mobile (HP)";
     const authorMeta = makeElement("div", "", `📱 Dibuat oleh ${creatorInfo} · ${new Date(h.createdAt).toLocaleString("id-ID")}`);
     authorMeta.style.fontSize = "11px";
     authorMeta.style.color = "var(--mint)";

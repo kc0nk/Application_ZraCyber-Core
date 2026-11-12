@@ -13,9 +13,9 @@
   --border-card-subtle: #1e2d3b;
   --text-main: #f3f7fa;
   --text-muted: #8c9ba8;
-  --accent-color: #38bdf8;
-  --btn-primary-bg: #1e40af; /* Biru agak gelap */
-  --btn-primary-hover: #2563eb;
+  --accent-color: #34d399;
+  --btn-primary-bg: #059669;
+  --btn-primary-hover: #10b981;
   --btn-primary-text: #ffffff;
   --btn-secondary-bg: #132338;
   --btn-secondary-border: #274771;
@@ -26,7 +26,7 @@
   --nav-bg: #0d151c;
   --nav-border: #263544;
   --nav-btn-text: #91a0ad;
-  --nav-active-bg: #1e40af;
+  --nav-active-bg: #059669;
   --nav-active-text: #ffffff;
   --chat-sidebar-bg: #111b21;
   --chat-card-bg: #111b21;
