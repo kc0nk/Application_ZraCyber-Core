@@ -32,8 +32,6 @@ ZraCyber-Core dirancang khusus untuk *Security Engineers, Penetration Testers, B
 
 - **Cross-Platform Multi-Tool**: Mengintegrasikan pemeriksaan Website, Aplikasi Mobile, Berkas/Payload, Identitas OSINT, Server VPS, hingga Kriptografi dalam satu dasbor terpadu.
 - **Orkestrasi AI Groq Cloud**: Memanfatkan kecerdasan buatan Groq AI (`openai/gpt-oss-120b` dengan `temperature: 0.0`) untuk menyusun sintesis intelijen faktual, korelasi kerentanan CVE/CWE, analisis risiko, serta kode perbaikan (*remediation patch*).
-- **Offline & Robust Fallback Engine**: Setiap modul dilengkapi penanganan galat jaringan tangguh yang menjamin pemindaian tetap dapat berjalan mandiri di perangkat seluler secara stabil.
-
 ---
 
 ## 🚀 FITUR UNGGULAN
@@ -119,10 +117,7 @@ Aplikasi Desktop Controller (Electron / Node.js) berfungsi sebagai pusat komando
 5. **Pusat Publikasi Update APK Mobile (OTA Release Publisher)**:
    - Fitur `⇧ Update APK mobile` memungkinkan admin mempublikasikan file APK rilis baru langsung ke seluruh HP secara *Over-The-Air* dengan sistem *Mandatory Lockdown Update*.
 
-6. **Asisten AI Chat & Eksekusi Suara (Voice & AI Chat)**:
-   - Dasbor konsultasi keamanan berbasis Groq AI dengan fitur perekaman dan pemutaran suara interaktif.
-
-7. **Fitur Pemblokiran & Uninstall Paksa Remote (Remote Force Wipe & Device Revocation)**:
+6. **Fitur Pemblokiran & Uninstall Paksa Remote (Remote Force Wipe & Device Revocation)**:
    - Apabila perangkat seluler terdeteksi melakukan tindakan anomali atau perintah pencopotan dipicu, admin desktop dapat mengaktifkan **Lockdown & Force Uninstall Paksa** yang langsung menghapus data lokal (*wipe*) dan mengunci antarmuka seluler.
 
 ---
