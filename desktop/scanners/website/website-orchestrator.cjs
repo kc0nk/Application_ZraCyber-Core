@@ -19,22 +19,12 @@ async function autoLoginAndHarvestSession(targetOrigin, username, password, log 
       signal: AbortSignal.timeout(3000)
     }).catch(() => null);
 
-<<<<<<< HEAD
     if (!res || !res.ok) {
       loginPageUrl = targetOrigin;
       res = await globalThis.fetch(loginPageUrl, {
         method: "GET",
         headers: { "User-Agent": "ZraCore-AutoLogin/3.0" },
         signal: AbortSignal.timeout(3000)
-=======
-  if (isLoginMode) {
-    try {
-      const loginRes = await globalThis.fetch(target.url, {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded", "User-Agent": "ZraCore-WebScanner/3.0" },
-        body: new URLSearchParams({ username: body.loginUser, password: body.loginPass }).toString(),
-        signal: AbortSignal.timeout(4000)
->>>>>>> 9348a6489ab663a6093a7c27b3ffcbc3092bc8e8
       }).catch(() => null);
     }
 
@@ -51,7 +41,11 @@ async function autoLoginAndHarvestSession(targetOrigin, username, password, log 
             const actionMatch = f.match(/action=["']([^"']+)["']/i);
             if (actionMatch) {
               try {
-                formAction = new URL(actionMatch[1], targetOrigin).toString();
+                const candidateAction = new URL(actionMatch[1], loginPageUrl);
+                if (candidateAction.origin !== targetOrigin) {
+                  throw new Error("Form login berada di luar origin target; kredensial tidak dikirim.");
+                }
+                formAction = candidateAction.toString();
               } catch {}
             }
             const inputs = f.match(/name=["']([^"']+)["']/gi);
@@ -70,12 +64,10 @@ async function autoLoginAndHarvestSession(targetOrigin, username, password, log 
       }
     }
 
-<<<<<<< HEAD
     log(`[AUTO-LOGIN] Mengirim POST login ke ${formAction} [Field: ${userField}, ${passField}]...`);
     const postBody = new URLSearchParams({
       [userField]: username,
-      [passField]: password,
-      csrf_token: "auto-bypass-token"
+      [passField]: password
     }).toString();
 
     const loginRes = await globalThis.fetch(formAction, {
@@ -91,26 +83,15 @@ async function autoLoginAndHarvestSession(targetOrigin, username, password, log 
 
     if (loginRes) {
       const setCookie = loginRes.headers.get("set-cookie");
-      if (setCookie) {
+      if (setCookie && (loginRes.ok || (loginRes.status >= 300 && loginRes.status < 400))) {
         sessionCookie = setCookie.split(";")[0];
-        log(`[AUTO-LOGIN] Berhasil memanen session cookie: ${sessionCookie}`);
+        log(`[AUTO-LOGIN] Respons login HTTP ${loginRes.status}; cookie sesi tersedia.`);
       } else {
-        // Fallback check response headers or cookies
-        const rawHeaders = JSON.stringify(loginRes.headers.raw?.() || {});
         log(`[AUTO-LOGIN-INFO] Respons login HTTP ${loginRes.status}.`);
       }
     }
   } catch (err) {
     log(`[AUTO-LOGIN-WARN] ${err.message}`);
-=======
-  const dns = await analyzeDnsRecon(target.hostname);
-  const crawlResult = await crawlWebsite(target.url, target.origin, 8, sessionCookie);
-  const urlGraph = { nodes: crawlResult.nodes, edges: crawlResult.edges };
-
-  const reachablePages = crawlResult.pages.filter(p => p.reachable);
-  if (reachablePages.length === 0) {
-    throw new Error(`Target web ${target.url} tidak dapat dijangkau atau menolak koneksi (Timeout/SSL Error).`);
->>>>>>> 9348a6489ab663a6093a7c27b3ffcbc3092bc8e8
   }
   return sessionCookie;
 }
