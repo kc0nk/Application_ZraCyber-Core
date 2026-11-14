@@ -24,7 +24,7 @@ export default function OverviewScreen() {
     {
       id: "dorking",
       title: "Dorking & Recon",
-      subtitle: "Google Dorking, URL Collector & PHP RCE",
+      subtitle: "Bing Search untuk Halaman Terindeks",
       icon: "search-outline" as const,
       route: "/tools_dorking" as const,
     },
@@ -34,6 +34,13 @@ export default function OverviewScreen() {
       subtitle: "Audit & Fuzzing AI Web Target",
       icon: "globe-outline" as const,
       route: "/tools_website" as const,
+    },
+    {
+      id: "phising",
+      title: "Phishing Check",
+      subtitle: "Deteksi Indikator URL Phishing",
+      icon: "shield-checkmark-outline" as const,
+      route: "/tools_phising" as const,
     },
     {
       id: "app",
@@ -52,7 +59,7 @@ export default function OverviewScreen() {
     {
       id: "osint",
       title: "Recon & OSINT",
-      subtitle: "Intelijen Domain & Sosmed",
+      subtitle: "Google Search, Lens & Maps",
       icon: "radio-outline" as const,
       route: "/tools_osint" as const,
     },

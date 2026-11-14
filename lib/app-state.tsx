@@ -414,6 +414,11 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
           const isDorking = normalizedAction === "dorking_recon" || title.includes("dorking") || title.includes("dork");
           return !isDorking;
         }
+        if (kindFilter.toLowerCase() === "phising" || kindFilter.toLowerCase() === "phishing") {
+          const normalizedAction = String(action || "").toLowerCase();
+          const isPhising = normalizedAction === "phising_url_check" || title.includes("phishing check") || title.includes("phising");
+          return !isPhising;
+        }
         if (kindFilter === "sonar") {
           const isSonar = action === "scan_sonar" || title.includes("sonar");
           return !isSonar;

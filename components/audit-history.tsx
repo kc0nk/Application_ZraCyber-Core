@@ -7,7 +7,7 @@ import { AuditWriteup } from "@/components/audit-writeup";
 import { Panel, SecondaryButton, StatusPill, useZraTheme } from "@/components/zra-ui";
 import type { HistoryItem } from "@/lib/app-state";
 
-export type AuditToolCategory = "website" | "app" | "file" | "osint" | "crypto" | "vps" | "security" | "dorking";
+export type AuditToolCategory = "website" | "app" | "file" | "osint" | "crypto" | "vps" | "security" | "dorking" | "phising";
 
 const CATEGORY_MATCHERS: Record<AuditToolCategory, { actions: string[]; titles: string[] }> = {
   website: { actions: ["ai_pentest_audit", "scan_web_metadata"], titles: ["website", "pentest", "web audit"] },
@@ -18,6 +18,7 @@ const CATEGORY_MATCHERS: Record<AuditToolCategory, { actions: string[]; titles: 
   vps: { actions: ["scan_vps"], titles: ["vps", "server inspection", "inspeksi server"] },
   security: { actions: ["device_security_scan"], titles: [] },
   dorking: { actions: ["dorking_recon"], titles: ["dorking", "dork"] },
+  phising: { actions: ["phising_url_check"], titles: ["phishing check", "phising"] },
 };
 
 export function filterAuditHistory(items: HistoryItem[], category: AuditToolCategory) {

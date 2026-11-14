@@ -21,6 +21,7 @@ const { runFileOrchestrator } = require("../scanners/file/file-orchestrator.cjs"
 const { runVpsOrchestrator } = require("../scanners/vps/vps-orchestrator.cjs");
 const { runWebsiteOrchestrator } = require("../scanners/website/website-orchestrator.cjs");
 const { runDorkingOrchestrator } = require("../scanners/dorking/dorking-orchestrator.cjs");
+const { runPhisingOrchestrator } = require("../scanners/phising/phising-orchestrator.cjs");
 
 
 // Mengubah batas body request dan sampel biner ke 3 GB (3 * 1024 * 1024 * 1024)
@@ -1251,6 +1252,35 @@ function createApiServer({
       return;
     }
     // ========================== END DORKING TOOL API ========================
+
+    // ========================================================================
+    // PHISHING CHECK API | POST /tools/phising/scan
+    // ========================================================================
+    if (pathname === "/tools/phising/scan" && request.method === "POST") {
+      try {
+        const identity = readDeviceIdentity(request);
+        const token = readBearerToken(request);
+        const remoteIp = request.socket.remoteAddress ?? "127.0.0.1";
+        const activeTokens = getToken?.() ?? [];
+        if (!token || !activeTokens.includes(token)) {
+          sendJson(response, 401, { success: false, error: "Hubungkan aplikasi mobile dengan API Key Desktop aktif sebelum pemeriksaan." });
+          return;
+        }
+        const authorization = await authorizeDevice?.(identity, remoteIp, token, pathname);
+        if (authorization && !authorization.allowed) {
+          sendJson(response, authorization.status ?? 401, { success: false, error: authorization.error ?? "Akses pemeriksaan ditolak." });
+          return;
+        }
+
+        const body = await readJson(request, 16 * 1024);
+        const report = await runPhisingOrchestrator(body);
+        sendJson(response, 200, report);
+      } catch (error) {
+        sendJson(response, 400, { success: false, error: error instanceof Error ? error.message : "Pemeriksaan phishing gagal." });
+      }
+      return;
+    }
+    // ========================== END PHISHING CHECK API =======================
 
     // ========================================================================
     // DORKING INSPECT API | POST /tools/dorking/inspect

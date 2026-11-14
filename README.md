@@ -60,19 +60,22 @@ OSINT mencari referensi web publik berdasarkan nama lengkap atau username melalu
 ### 🔎 05. DORKING & RECON
 `tools_dorking.tsx` adalah layar pencarian halaman publik yang sudah terindeks, dengan cakupan domain atau TLD dan preset query seperti `inurl:upload`, `inurl:admin`, `filetype:pdf`, `inurl:api`, dan `ext:php`. Pencarian saat ini dilakukan melalui Bing menggunakan SerpApi (bukan Google). Secara default pencarian bersifat pasif; pemeriksaan HTTP HEAD opsional hanya tersedia untuk maksimal 10 hasil pada domain yang kewenangannya dikonfirmasi, dan tidak mengirim payload eksploit.
 
-### 🖥️ 06. VPS & SERVER SECURITY (Dual-Mode: External & Internal)
+### 🛡️ 06. PHISHING URL CHECK
+`tools_phising.tsx` memeriksa indikator phishing pada URL dan halaman publik. Pemindai memakai satu HTTP GET, menganalisis alamat URL dan HTML terbatas, lalu menampilkan tingkat indikasi, skor, dan bukti. Pemindai tidak mengirim form atau kredensial dan tidak menjalankan JavaScript. Skor heuristik membantu triase, bukan memastikan situs pasti phishing atau aman.
+
+### 🖥️ 07. VPS & SERVER SECURITY (Dual-Mode: External & Internal)
 - **External Scan (Tanpa Login)**: Audit permukaan eksternal, eksposur port terbuka (TCP 22/80/443/3306/dll.), servis, banner, dan DNS.
 - **Internal Scan (Dengan Login)**: Audit terautentikasi (*Root-Level Audit*) via SSH untuk mendeteksi OS, users/sudoers, filesystem permissions, processes, network, dan aplikasi web/database.
 
-### 🔐 07. CRYPTOGRAPHY & CIPHER CORE
+### 🔐 08. CRYPTOGRAPHY & CIPHER CORE
 - **AES-256-GCM**: Enkripsi simetris terautentikasi dengan PBKDF2-HMAC-SHA256 / Scrypt Key Derivation Function (KDF).
 - **Nonce & Auth Tag**: Verifikasi integritas cipher yang kuat dan aman.
 
-### 📄 08. LAPORAN RESMI PDF
+### 📄 09. LAPORAN RESMI PDF
 - **Ekspor Dokumen A4**: Agregasi riwayat audit dari seluruh modul dalam satu laporan PDF resmi.
 - **Struktur Profesional**: Header resmi, tabel metadata, sintesis AI, dan daftar tautan referensi.
 
-### 💻 09. DESKTOP CONTROLLER & LIVE MAP
+### 💻 10. DESKTOP CONTROLLER & LIVE MAP
 - **Peta Live (Leaflet Map)**: Pelacakan GPS real-time dengan 3 indikator warna:
   - **BIRU (`#3b82f6`)**: Perangkat Terdaftar Resmi (*Registered Device*).
   - **KUNING (`#eab308`)**: Perangkat Akun Demo Juri (*Judge Demo Account*).
@@ -90,6 +93,7 @@ OSINT mencari referensi web publik berdasarkan nama lengkap atau username melalu
 | **File & Malware** | High Entropy Packed, Webshell Scripts (`eval`, `system`, `base64`) & IoC | Shannon Entropy (> 7.2 bit/byte) & deep string regex |
 | **OSINT Pencarian Publik** | Referensi web untuk nama/username, kecocokan visual gambar, kandidat tempat, dan foto publik Maps | Google Search, Google Lens, Google Maps, dan analisis AI untuk membantu membentuk kueri tempat |
 | **Dorking & Recon** | Halaman publik terindeks berdasarkan domain/TLD dan preset query | Bing via SerpApi; pemeriksaan HTTP HEAD opsional pada maksimal 10 hasil domain terkonfirmasi |
+| **Phishing URL Check** | URL mencurigakan dan indikator halaman login/form | Analisis heuristik URL serta HTML melalui HTTP GET; tanpa pengiriman kredensial atau payload |
 | **VPS Server Audit** | SSH Hardening, Cron Persistence & Post-Auth IDOR/Webshell | Inspeksi port 22, crontab anomali & autentikasi sistem |
 | **Cryptography** | AES-256-GCM & Scrypt Key Derivation Function (KDF) | Enkripsi simetris terautentikasi (Nonce + Auth Tag) |
 
@@ -233,13 +237,18 @@ node website_lab/server.cjs
 - Masukkan domain yang berwenang kamu periksa atau TLD, lalu pilih preset query dan jalankan pencarian.
 - Pencarian bersifat pasif secara default. Untuk domain yang kamu kelola, centang konfirmasi kewenangan agar maksimal 10 hasil diperiksa dengan HTTP HEAD. Pemeriksaan ini membaca status/header, bukan menguji payload eksploit.
 
-### 4. Menggunakan OSINT Pencarian Publik:
+### 4. Memeriksa URL Phishing:
+- Buka **Phishing Check**, masukkan URL HTTP/HTTPS publik, lalu jalankan pemeriksaan.
+- Hasil berupa skor dan indikator heuristik untuk membantu menilai URL; skor rendah bukan jaminan situs aman.
+- Pemeriksaan dibatasi maksimal 3 redirect dan 512 KB HTML, hanya memakai HTTP GET, serta menolak alamat jaringan lokal/private.
+
+### 5. Menggunakan OSINT Pencarian Publik:
 - Pilih **Nama lengkap** atau **Username** untuk mencari referensi web publik di Google.
 - Pilih **Gambar Google** untuk mencari kecocokan visual melalui Google Lens, atau **Google Maps dari Foto** untuk memperoleh kandidat tempat berdasarkan gambar.
 - Pada hasil Maps, pilih tempat yang sesuai untuk melihat foto publik dan gunakan tombol pemuatan foto berikutnya jika tersedia.
 - Kecocokan pencarian adalah petunjuk untuk ditinjau, bukan konfirmasi identitas atau lokasi. Gambar yang diunggah dibatasi maksimal 500 KB.
 
-### 5. Menguji Modul File & Malware Analysis (File Lab Lokal):
+### 6. Menguji Modul File & Malware Analysis (File Lab Lokal):
 - Pilih sampel `suspicious_invoice.pdf` dari direktori `file_lab/` untuk mendeteksi payload webshell.
 
 ---
@@ -255,6 +264,7 @@ Application/
 │   ├── tools_file.tsx        # Modul File & Malware Analysis
 │   ├── tools_osint.tsx       # Modul OSINT Google Search, Lens & Maps
 │   ├── tools_dorking.tsx     # Modul Dorking & Recon
+│   ├── tools_phising.tsx     # Modul Pemeriksaan Indikator Phishing
 │   ├── tools_vps.tsx         # Modul VPS & Server Security
 │   └── tools_cryptography.tsx# Modul Kriptografi & Cipher
 ├── desktop/                  # Dasbor Desktop Controller (Electron)
