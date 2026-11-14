@@ -58,9 +58,7 @@ ZraCyber-Core dirancang khusus untuk *Security Engineers, Penetration Testers, B
 OSINT mencari referensi web publik berdasarkan nama lengkap atau username melalui Google Search, mencari kecocokan visual gambar melalui Google Lens, serta membantu menemukan kandidat tempat dari foto menggunakan Lens, analisis AI, dan Google Maps. Pengguna juga dapat melihat foto publik dari tempat yang dipilih. Fitur ini membantu menghimpun referensi publik untuk ditinjau; kecocokan nama, gambar, atau tempat bukan konfirmasi identitas seseorang maupun lokasi foto.
 
 ### 🔎 05. DORKING & RECON
-- **Pencarian Halaman Publik**: Mencari halaman yang sudah terindeks Bing melalui SerpApi dengan cakupan domain atau TLD.
-- **Preset Query**: Semua halaman, `inurl:upload`, `inurl:admin`, `filetype:pdf`, `inurl:api`, dan `ext:php`.
-- **Pemeriksaan Ringan Opsional**: Dengan konfirmasi kewenangan pada satu domain, kirim HTTP HEAD ke maksimal 10 hasil untuk membaca status dan header. Cakupan TLD hanya pasif; tidak ada payload eksploit.
+`tools_dorking.tsx` adalah layar pencarian halaman publik yang sudah terindeks, dengan cakupan domain atau TLD dan preset query seperti `inurl:upload`, `inurl:admin`, `filetype:pdf`, `inurl:api`, dan `ext:php`. Pencarian saat ini dilakukan melalui Bing menggunakan SerpApi (bukan Google). Secara default pencarian bersifat pasif; pemeriksaan HTTP HEAD opsional hanya tersedia untuk maksimal 10 hasil pada domain yang kewenangannya dikonfirmasi, dan tidak mengirim payload eksploit.
 
 ### 🖥️ 06. VPS & SERVER SECURITY (Dual-Mode: External & Internal)
 - **External Scan (Tanpa Login)**: Audit permukaan eksternal, eksposur port terbuka (TCP 22/80/443/3306/dll.), servis, banner, dan DNS.
@@ -298,4 +296,3 @@ Application/
 ---
 
 **ZraCyber-Core Intelligence & Penetration Testing Platform © 2026**  
-*Empowering Cyber Defense & Forensics with Advanced AI Orchestration.*
