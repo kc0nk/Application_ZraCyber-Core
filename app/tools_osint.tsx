@@ -187,30 +187,15 @@ export default function ToolsOsintScreen() {
           <Ionicons name="arrow-back" size={20} color={ZRA.mint} />
           <Text style={{ color: ZRA.mint, fontSize: 13, fontWeight: "700" }}>Kembali ke Ringkasan</Text>
         </Pressable>
-<<<<<<< HEAD
         <BrandHeader eyebrow="ZRACORE / TOOLKIT" title="OSINT" subtitle="Pencarian data publik melalui Google Search, Google Lens, dan Google Maps." />
-=======
-
-        <BrandHeader eyebrow="ZRACORE / TOOLKIT" title="OSINT" subtitle="Modul investigasi jejak digital faktual tanpa biografi spekulatif." />
-
->>>>>>> 9348a6489ab663a6093a7c27b3ffcbc3092bc8e8
         <Panel accent>
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
               <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: ZRA.mintDim, alignItems: "center", justifyContent: "center" }}>
-<<<<<<< HEAD
                 <Ionicons name="search-outline" size={20} color={ZRA.mint} />
-=======
-                <Ionicons name="people-outline" size={20} color={ZRA.mint} />
-              </View>
-              <View>
-                <Text style={styles.panelTitle}>OSINT</Text>
-                <Text style={{ color: ZRA.muted, fontSize: 11, fontWeight: "600" }}>Mode Faktual Tanpa Spekulasi</Text>
->>>>>>> 9348a6489ab663a6093a7c27b3ffcbc3092bc8e8
               </View>
               <View><Text style={styles.panelTitle}>OSINT Pencarian Publik</Text><Text style={{ color: ZRA.muted, fontSize: 11 }}>Hasil indeks Google melalui SerpApi</Text></View>
             </View>
-<<<<<<< HEAD
             <StatusPill label="ACTIVE" tone="mint" />
           </View>
         </Panel>
@@ -221,33 +206,6 @@ export default function ToolsOsintScreen() {
             {searchModes.map((mode) => (
               <Pressable key={mode.id} onPress={() => { setSearchType(mode.id); setFeedback(""); setReportData(null); }} style={{ paddingHorizontal: 12, paddingVertical: 10, borderRadius: 10, backgroundColor: searchType === mode.id ? ZRA.mintDim : ZRA.surface, borderWidth: 1, borderColor: searchType === mode.id ? ZRA.mint : ZRA.border }}>
                 <Text style={{ color: searchType === mode.id ? ZRA.mint : ZRA.text, fontSize: 11, fontWeight: "800" }}>{mode.label}</Text>
-=======
-            <StatusPill label="INTEL" tone="mint" />
-          </View>
-        </Panel>
-
-        <SectionHeading label="Pilih Jenis Target &amp; Kata Kunci" />
-        <Panel style={{ gap: 12 }}>
-          {/* Mode Selector Buttons */}
-          <View style={{ flexDirection: "row", gap: 8 }}>
-            {(["name", "username", "email"] as const).map((type) => (
-              <Pressable
-                key={type}
-                onPress={() => setSearchType(type)}
-                style={{
-                  flex: 1,
-                  paddingVertical: 10,
-                  borderRadius: 10,
-                  backgroundColor: searchType === type ? "#2563eb" : ZRA.surface,
-                  borderWidth: 1,
-                  borderColor: searchType === type ? "#2563eb" : ZRA.border,
-                  alignItems: "center",
-                }}
-              >
-                <Text style={{ color: searchType === type ? "#ffffff" : ZRA.text, fontSize: 11, fontWeight: "800" }}>
-                  {type === "name" ? "Nama Lengkap" : type === "username" ? "@Username" : "Email"}
-                </Text>
->>>>>>> 9348a6489ab663a6093a7c27b3ffcbc3092bc8e8
               </Pressable>
             ))}
           </View>

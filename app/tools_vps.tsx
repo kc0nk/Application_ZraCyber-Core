@@ -153,11 +153,7 @@ export default function ToolsVpsScreen() {
                 <Text style={{ color: ZRA.muted, fontSize: 11, fontWeight: "600" }}>{scanMode === "external" ? "Tanpa Login (Pre-Auth)" : "Dengan Login (Post-Auth)"}</Text>
               </View>
             </View>
-<<<<<<< HEAD
             <StatusPill label="RULE ENGINE" tone="mint" />
-=======
-            <StatusPill label="LLM" tone="mint" />
->>>>>>> 9348a6489ab663a6093a7c27b3ffcbc3092bc8e8
           </View>
         </Panel>
 
