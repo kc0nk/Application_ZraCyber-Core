@@ -175,7 +175,7 @@ export default function ToolsAppScreen() {
                 <Text style={{ color: ZRA.muted, fontSize: 11, fontWeight: "600" }}>Static Heuristics · APK / IPA / PE</Text>
               </View>
             </View>
-            <StatusPill label="REAL BACKEND" tone="mint" />
+            <StatusPill label="LLM" tone="mint" />
           </View>
         </Panel>
 

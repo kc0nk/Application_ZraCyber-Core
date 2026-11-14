@@ -19,12 +19,22 @@ async function autoLoginAndHarvestSession(targetOrigin, username, password, log 
       signal: AbortSignal.timeout(3000)
     }).catch(() => null);
 
+<<<<<<< HEAD
     if (!res || !res.ok) {
       loginPageUrl = targetOrigin;
       res = await globalThis.fetch(loginPageUrl, {
         method: "GET",
         headers: { "User-Agent": "ZraCore-AutoLogin/3.0" },
         signal: AbortSignal.timeout(3000)
+=======
+  if (isLoginMode) {
+    try {
+      const loginRes = await globalThis.fetch(target.url, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded", "User-Agent": "ZraCore-WebScanner/3.0" },
+        body: new URLSearchParams({ username: body.loginUser, password: body.loginPass }).toString(),
+        signal: AbortSignal.timeout(4000)
+>>>>>>> 9348a6489ab663a6093a7c27b3ffcbc3092bc8e8
       }).catch(() => null);
     }
 
@@ -60,6 +70,7 @@ async function autoLoginAndHarvestSession(targetOrigin, username, password, log 
       }
     }
 
+<<<<<<< HEAD
     log(`[AUTO-LOGIN] Mengirim POST login ke ${formAction} [Field: ${userField}, ${passField}]...`);
     const postBody = new URLSearchParams({
       [userField]: username,
@@ -91,6 +102,15 @@ async function autoLoginAndHarvestSession(targetOrigin, username, password, log 
     }
   } catch (err) {
     log(`[AUTO-LOGIN-WARN] ${err.message}`);
+=======
+  const dns = await analyzeDnsRecon(target.hostname);
+  const crawlResult = await crawlWebsite(target.url, target.origin, 8, sessionCookie);
+  const urlGraph = { nodes: crawlResult.nodes, edges: crawlResult.edges };
+
+  const reachablePages = crawlResult.pages.filter(p => p.reachable);
+  if (reachablePages.length === 0) {
+    throw new Error(`Target web ${target.url} tidak dapat dijangkau atau menolak koneksi (Timeout/SSL Error).`);
+>>>>>>> 9348a6489ab663a6093a7c27b3ffcbc3092bc8e8
   }
   return sessionCookie;
 }
