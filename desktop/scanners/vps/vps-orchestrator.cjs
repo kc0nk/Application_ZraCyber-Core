@@ -31,12 +31,18 @@ async function runVpsOrchestrator(body, apiKey) {
   }
 
   const riskResult = calculateRisk(findings);
+  const labSimulation = Boolean(scanMode === "external" && scanResult.labProfile);
 
   return {
     success: true,
     scanType: scanMode === "internal" ? "vps-internal-authenticated-audit" : "vps-external-attack-surface",
-    summary: `Inspeksi VPS (${scanMode === "internal" ? "Dengan Login" : "Tanpa Login"}) berhasil diselesaikan untuk target ${target.ip}:${target.port}.`,
-    limitations: "Inspeksi dilakukan melalui discovery jaringan riil dan interpretasi rule engine.",
+    summary: labSimulation
+      ? `Simulasi VPS Lab berhasil dianalisis untuk target ${target.ip}:${target.port}. Temuan simulasi ditampilkan bersama observasi port.`
+      : `Inspeksi VPS (${scanMode === "internal" ? "Dengan Login" : "Tanpa Login"}) berhasil diselesaikan untuk target ${target.ip}:${target.port}.`,
+    limitations: labSimulation
+      ? "Laporan ini menggabungkan observasi koneksi lokal dengan indikator dari fixture simulasi VPS Lab; anomali fixture bukan hasil pemeriksaan host nyata."
+      : "Inspeksi dilakukan melalui discovery jaringan riil dan interpretasi rule engine.",
+    labSimulation,
     authenticated: scanMode === "internal" ? Boolean(scanResult.authenticated) : false,
     ...(scanMode === "internal" ? { user: scanResult.user, hostFingerprint: scanResult.hostFingerprint } : {}),
     evidence: scanResult.evidence,
@@ -45,6 +51,7 @@ async function runVpsOrchestrator(body, apiKey) {
     logs: [
       `[VPS-INIT] Memulai pemindaian VPS mode: ${scanMode} pada ${target.ip}:${target.port}`,
       `[DISCOVERY] Berhasil mengumpulkan ${scanResult.evidence.length} indikator bukti.`,
+      ...(labSimulation ? [`[LAB] Profil simulasi '${scanResult.labProfile.hostname || "VPS Lab"}' dimuat dari endpoint lokal /target.`] : []),
       `[RULE-ENGINE] Ditemukan ${findings.length} temuan kerentanan server.`,
       `[SUCCESS] Laporan audit VPS berhasil disusun.`
     ]

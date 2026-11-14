@@ -59,20 +59,24 @@ ZraCyber-Core dirancang khusus untuk *Security Engineers, Penetration Testers, B
 - **Active Live Presence Checker**: Verifikasi status aktif di 10 platform sosial media utama (*Instagram, Twitter/X, Facebook, Threads, LinkedIn, GitHub, Scribd, Pinterest, Unsplash, Pxhere*).
 - **Confidence Engine & Identity Graph**: Menghubungkan titik data antar-profil (*USES_USERNAME, REFERENCES_EMAIL, SAME_AVATAR*) dengan skor tingkat keyakinan (*High/Medium/Low*).
 
-### 🖥️ 05. VPS & SERVER SECURITY (Dual-Mode: External & Internal)
+### 🔎 05. DORKING & RECON
+- **Pencarian Halaman Publik**: Mencari halaman yang sudah terindeks Bing melalui SerpApi dengan cakupan domain atau TLD.
+- **Preset Query**: Semua halaman, `inurl:upload`, `inurl:admin`, `filetype:pdf`, `inurl:api`, dan `ext:php`.
+- **Pemeriksaan Ringan Opsional**: Dengan konfirmasi kewenangan pada satu domain, kirim HTTP HEAD ke maksimal 10 hasil untuk membaca status dan header. Cakupan TLD hanya pasif; tidak ada payload eksploit.
+
+### 🖥️ 06. VPS & SERVER SECURITY (Dual-Mode: External & Internal)
 - **External Scan (Tanpa Login)**: Audit permukaan eksternal, eksposur port terbuka (TCP 22/80/443/3306/dll.), servis, banner, dan DNS.
 - **Internal Scan (Dengan Login)**: Audit terautentikasi (*Root-Level Audit*) via SSH untuk mendeteksi OS, users/sudoers, filesystem permissions, processes, network, dan aplikasi web/database.
-- **VPS Lab Lokal**: Didukung direktori `vps_lab/` (`127.0.0.1:8080`) untuk simulasi server rentan.
 
-### 🔐 06. CRYPTOGRAPHY & CIPHER CORE
+### 🔐 07. CRYPTOGRAPHY & CIPHER CORE
 - **AES-256-GCM**: Enkripsi simetris terautentikasi dengan PBKDF2-HMAC-SHA256 / Scrypt Key Derivation Function (KDF).
 - **Nonce & Auth Tag**: Verifikasi integritas cipher yang kuat dan aman.
 
-### 📄 07. LAPORAN RESMI PDF
+### 📄 08. LAPORAN RESMI PDF
 - **Ekspor Dokumen A4**: Agregasi riwayat audit dari seluruh modul dalam satu laporan PDF resmi.
 - **Struktur Profesional**: Header resmi, tabel metadata, sintesis AI, dan daftar tautan referensi.
 
-### 💻 08. DESKTOP CONTROLLER & LIVE MAP
+### 💻 09. DESKTOP CONTROLLER & LIVE MAP
 - **Peta Live (Leaflet Map)**: Pelacakan GPS real-time dengan 3 indikator warna:
   - **BIRU (`#3b82f6`)**: Perangkat Terdaftar Resmi (*Registered Device*).
   - **KUNING (`#eab308`)**: Perangkat Akun Demo Juri (*Judge Demo Account*).
@@ -89,6 +93,7 @@ ZraCyber-Core dirancang khusus untuk *Security Engineers, Penetration Testers, B
 | **App Mobile Audit** | MASTG Storage, Plaintext SharedPreferences & Signature Tampering | Inspeksi manifes, biner & verifikasi sertifikat APK |
 | **File & Malware** | High Entropy Packed, Webshell Scripts (`eval`, `system`, `base64`) & IoC | Shannon Entropy (> 7.2 bit/byte) & deep string regex |
 | **OSINT Recon** | Full Name Identity & Username Handle (`@handle`) di 10 Sosmed | Active Live Presence Checker & sintesis dossier AI |
+| **Dorking & Recon** | Halaman publik terindeks berdasarkan domain/TLD dan preset query | Bing via SerpApi; pemeriksaan HTTP HEAD opsional pada maksimal 10 hasil domain terkonfirmasi |
 | **VPS Server Audit** | SSH Hardening, Cron Persistence & Post-Auth IDOR/Webshell | Inspeksi port 22, crontab anomali & autentikasi sistem |
 | **Cryptography** | AES-256-GCM & Scrypt Key Derivation Function (KDF) | Enkripsi simetris terautentikasi (Nonce + Auth Tag) |
 
@@ -227,11 +232,10 @@ node website_lab/server.cjs
 ```
 - Target URL: `http://127.0.0.1:3000` (Kredensial: `labuser` / `lab-only-change-me`).
 
-### 3. Menguji Modul VPS & Server Security (Lab VPS Lokal):
-```bash
-node vps_lab/mock_vps_server.cjs
-```
-- Masukkan IP `127.0.0.1`, Port `22`, User `root` (*Mode Tanpa Login atau Dengan Login*).
+### 3. Menggunakan Dorking & Recon:
+- Pastikan SerpApi key sudah dikonfigurasi di Desktop Controller pada pengaturan **Bing Search**.
+- Masukkan domain yang berwenang kamu periksa atau TLD, lalu pilih preset query dan jalankan pencarian.
+- Pencarian bersifat pasif secara default. Untuk domain yang kamu kelola, centang konfirmasi kewenangan agar maksimal 10 hasil diperiksa dengan HTTP HEAD. Pemeriksaan ini membaca status/header, bukan menguji payload eksploit.
 
 ### 4. Menguji OSINT Identitas & Username:
 - Masukkan Nama Lengkap atau `@username` untuk memetakan dossier intelijen mendalam dan Confidence Engine.
@@ -251,6 +255,7 @@ Application/
 │   ├── tools_app.tsx         # Modul App Mobile Audit
 │   ├── tools_file.tsx        # Modul File & Malware Analysis
 │   ├── tools_osint.tsx       # Modul OSINT Social Media & Identity
+│   ├── tools_dorking.tsx     # Modul Dorking & Recon
 │   ├── tools_vps.tsx         # Modul VPS & Server Security
 │   └── tools_cryptography.tsx# Modul Kriptografi & Cipher
 ├── desktop/                  # Dasbor Desktop Controller (Electron)
@@ -266,10 +271,6 @@ Application/
 │   ├── .env.example          # Contoh variabel lingkungan
 │   ├── styles.css            # Styling halaman lab
 │   └── README.md             # Panduan Pengujian Web Lab
-├── vps_lab/                  # Lab Simulasi VPS Lokal
-│   ├── mock_vps_server.cjs   # Server Target Simulasi VPS
-│   ├── simulated_target.json # Konfigurasi Target Rentan
-│   └── README.md             # Panduan Pengujian VPS Lab
 ├── file_lab/                 # Lab Simulasi Malware File (Suspicious PDF)
 │   ├── suspicious_invoice.pdf# Berkas Sampel PDF Berisi Simulasi Webshell
 │   └── README.md             # Panduan Pengujian File Lab
