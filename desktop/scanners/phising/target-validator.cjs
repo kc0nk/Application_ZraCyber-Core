@@ -34,7 +34,7 @@ async function resolvePublicTarget(url) {
   return addresses.map(({ address }) => assertPublicAddress(address));
 }
 
-async function validatePhisingTarget(rawTarget) {
+async function validatePhisingTarget(rawTarget, { allowLocalLab = false } = {}) {
   const input = String(rawTarget || "").trim();
   if (!input) throw new Error("Masukkan URL website yang ingin diperiksa.");
   if (input.length > MAX_URL_LENGTH) throw new Error(`URL maksimal ${MAX_URL_LENGTH} karakter.`);
@@ -54,8 +54,16 @@ async function validatePhisingTarget(rawTarget) {
   // Never forward URL-embedded credentials to the target.
   url.username = "";
   url.password = "";
+  if (allowLocalLab
+    && url.protocol === "http:"
+    && url.hostname === "127.0.0.1"
+    && url.port === "8091"
+    && url.pathname === "/login-demo"
+    && !url.search) {
+    return { url, addresses: [{ address: "127.0.0.1", family: 4 }], hadUserInfo, labMode: true };
+  }
   const addresses = await resolvePublicTarget(url);
-  return { url, addresses, hadUserInfo };
+  return { url, addresses, hadUserInfo, labMode: false };
 }
 
 module.exports = { validatePhisingTarget, resolvePublicTarget, assertPublicAddress };

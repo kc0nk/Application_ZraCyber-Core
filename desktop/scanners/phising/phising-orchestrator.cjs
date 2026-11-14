@@ -98,7 +98,10 @@ function inspectHtmlIndicators(html, finalUrl) {
 }
 
 async function runPhisingOrchestrator(body) {
-  const { url, addresses, hadUserInfo } = await validatePhisingTarget(body?.url || body?.targetUrl);
+  const { url, addresses, hadUserInfo, labMode } = await validatePhisingTarget(
+    body?.url || body?.targetUrl,
+    { allowLocalLab: body?.labMode === true },
+  );
   const signals = inspectUrlIndicators(url, hadUserInfo);
   let page = null;
   let fetchError = "";
@@ -147,6 +150,7 @@ async function runPhisingOrchestrator(body) {
     success: true,
     category: "phising",
     scanType: "passive-phishing-indicator-check",
+    labMode,
     target: safeUrl,
     summary: `${verdict}. Skor indikator: ${score}/100.`,
     verdict,

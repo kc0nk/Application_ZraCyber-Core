@@ -241,6 +241,7 @@ node website_lab/server.cjs
 - Buka **Phishing Check**, masukkan URL HTTP/HTTPS publik, lalu jalankan pemeriksaan.
 - Hasil berupa skor dan indikator heuristik untuk membantu menilai URL; skor rendah bukan jaminan situs aman.
 - Pemeriksaan dibatasi maksimal 3 redirect dan 512 KB HTML, hanya memakai HTTP GET, serta menolak alamat jaringan lokal/private.
+- Untuk latihan aman, jalankan `node phising_lab/server.cjs`, lalu tekan **Isi URL Lab Phishing Lokal** di aplikasi. Form demo tidak mengirim atau menyimpan input.
 
 ### 5. Menggunakan OSINT Pencarian Publik:
 - Pilih **Nama lengkap** atau **Username** untuk mencari referensi web publik di Google.
@@ -280,6 +281,9 @@ Application/
 │   ├── .env.example          # Contoh variabel lingkungan
 │   ├── styles.css            # Styling halaman lab
 │   └── README.md             # Panduan Pengujian Web Lab
+├── phising_lab/              # Lab lokal indikator phishing (form inert)
+│   ├── server.cjs            # Server demo loopback (Port 8091)
+│   └── README.md             # Panduan Pengujian Phishing Lab
 ├── file_lab/                 # Lab Simulasi Malware File (Suspicious PDF)
 │   ├── suspicious_invoice.pdf# Berkas Sampel PDF Berisi Simulasi Webshell
 │   └── README.md             # Panduan Pengujian File Lab

@@ -14,6 +14,7 @@ export default function ToolsPhisingScreen() {
   const { ZRA, styles } = useZraTheme();
   const { apiUrl, websiteAuditHeaders, history, addHistory, clearHistory } = useAppState();
   const [targetUrl, setTargetUrl] = useState("");
+  const [labMode, setLabMode] = useState(false);
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState("");
   const [report, setReport] = useState<any | null>(null);
@@ -33,7 +34,7 @@ export default function ToolsPhisingScreen() {
       const response = await fetch(`${apiUrl}/tools/phising/scan`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...websiteAuditHeaders },
-        body: JSON.stringify({ url }),
+        body: JSON.stringify({ url, labMode }),
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.error || `Desktop Controller mengembalikan HTTP ${response.status}.`);
@@ -96,15 +97,26 @@ export default function ToolsPhisingScreen() {
           <Field
             label="URL website"
             value={targetUrl}
-            onChangeText={setTargetUrl}
+            onChangeText={(value) => { setTargetUrl(value); setLabMode(false); }}
             placeholder="https://example.com/login"
             autoCapitalize="none"
             autoCorrect={false}
             keyboardType="url"
           />
           <Text style={{ color: ZRA.muted, fontSize: 11, lineHeight: 16 }}>
-            Gunakan URL publik. Pemindai mengambil halaman dengan HTTP GET, mengikuti maksimal 3 redirect, dan membaca maksimal 512 KB HTML. JavaScript tidak dijalankan dan form tidak dikirim.
+            Gunakan URL publik. Pemindai mengambil halaman dengan HTTP GET, mengikuti maksimal 3 redirect, dan membaca maksimal 512 KB HTML. JavaScript situs tidak dijalankan dan form tidak dikirim. Untuk latihan, gunakan tombol lab lokal.
           </Text>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => {
+              setTargetUrl("http://127.0.0.1:8091/login-demo");
+              setLabMode(true);
+              setFeedback("Mode lab dipilih. Pastikan server phising_lab berjalan di Desktop.");
+            }}
+            style={{ minHeight: 42, borderWidth: 1, borderColor: ZRA.border, borderRadius: 10, padding: 10, alignItems: "center", justifyContent: "center", backgroundColor: ZRA.surface }}
+          >
+            <Text style={{ color: ZRA.mint, fontSize: 11, fontWeight: "800" }}>Isi URL Lab Phishing Lokal</Text>
+          </Pressable>
           <PrimaryButton
             label={busy ? "Memeriksa URL..." : "Periksa Indikator Phishing"}
             icon="search-outline"
@@ -120,6 +132,7 @@ export default function ToolsPhisingScreen() {
               <Text style={{ color: ZRA.text, flex: 1, fontSize: 14, fontWeight: "900" }}>{report.verdict}</Text>
               <StatusPill label={`${String(report.confidence || "rendah").toUpperCase()} · ${report.score}/100`} tone={verdictTone} />
             </View>
+            {report.labMode ? <StatusPill label="SIMULASI LAB LOKAL" tone="amber" /> : null}
             <Text style={{ color: ZRA.muted, fontSize: 10, lineHeight: 15 }}>{report.limitations}</Text>
             <AuditWriteup report={report} showStats={false} emptyMessage="Belum ada hasil pemeriksaan." />
           </Panel>
