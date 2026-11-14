@@ -146,11 +146,6 @@ Aplikasi Desktop Controller (Electron / Node.js) berfungsi sebagai pusat komando
 ---
 
 > [!TIP]
-> **KUNCI GROQ API RESMI (DEFAULT ADMIN KEY)**:  
-> Platform ZraCyber-Core sudah terkonfigurasi secara bawaan (*pre-configured*) dengan kunci API resmi berikut:  
-> `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`
-
-> [!TIP]
 > **URL NGROK RESMI ADMIN**:  
 > `https://popular-shorten-imperial.ngrok-free.dev`
 
