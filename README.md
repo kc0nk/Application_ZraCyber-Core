@@ -7,8 +7,8 @@
 ---
 
 > [!IMPORTANT]
-> **PERINGATAN INTEGRITAS DATA FAKTUAL (NON-VISUAL DISCLAIMER)**:  
-> Seluruh hasil analisis, audit keamanan, laporan OSINT, dan inspeksi biner pada platform ZraCyber-Core merupakan **DATA FAKTUAL YANG OBJEKTIF** (berdasarkan sintesis jejak digital publik, indeks dokumen resmi, metadata biner, dan kalkulasi matematis entropi). Platform ini **TIDAK MENGGUNAKAN HALUSINASI DATA VISUAL FIKTIF** atau tebakan gambar yang tidak terverifikasi.
+> **CATATAN HASIL OSINT**:  
+> Hasil pencarian berasal dari indeks publik pihak ketiga. Kecocokan nama, gambar, dan kandidat lokasi adalah petunjuk untuk ditinjau, bukan verifikasi identitas atau lokasi. Analisis AI membantu menyusun kueri dan dapat keliru.
 
 ---
 
@@ -30,7 +30,7 @@
 
 ZraCyber-Core dirancang khusus untuk *Security Engineers, Penetration Testers, Bug Bounty Hunters, dan Digital Forensic Investigators* untuk melakukan audit keamanan terpadu di berbagai permukaan serangan (*attack surface*):
 
-- **Cross-Platform Multi-Tool**: Mengintegrasikan pemeriksaan Website, Aplikasi Mobile, Berkas/Payload, Identitas OSINT, Server VPS, hingga Kriptografi dalam satu dasbor terpadu.
+- **Cross-Platform Multi-Tool**: Mengintegrasikan pemeriksaan Website, Aplikasi Mobile, Berkas/Payload, pencarian OSINT publik, Server VPS, hingga Kriptografi dalam satu dasbor terpadu.
 - **Orkestrasi AI Groq Cloud**: Memanfatkan kecerdasan buatan Groq AI (`openai/gpt-oss-120b` dengan `temperature: 0.0`) untuk menyusun sintesis intelijen faktual, korelasi kerentanan CVE/CWE, analisis risiko, serta kode perbaikan (*remediation patch*).
 ---
 
@@ -54,10 +54,8 @@ ZraCyber-Core dirancang khusus untuk *Security Engineers, Penetration Testers, B
 - **Indicator Engine**: Ekstraksi URL eksternal, Alamat IP hardcoded, path sistem, dan perintah shell mencurigakan.
 - **Embedded Source Code & Webshell Detector**: Mendeteksi potongan kodingan tersembunyi (`eval`, `system`, `base64_decode`).
 
-### 🔍 04. OSINT SOCIAL MEDIA & IDENTITY (Identity Graph & Confidence Engine)
-- **Mode Nama Lengkap & @username**: Pelacakan rekon identitas, direktori LinkedIn, Facebook Public, Arsip, dan dokumen Scribd.
-- **Active Live Presence Checker**: Verifikasi status aktif di 10 platform sosial media utama (*Instagram, Twitter/X, Facebook, Threads, LinkedIn, GitHub, Scribd, Pinterest, Unsplash, Pxhere*).
-- **Confidence Engine & Identity Graph**: Menghubungkan titik data antar-profil (*USES_USERNAME, REFERENCES_EMAIL, SAME_AVATAR*) dengan skor tingkat keyakinan (*High/Medium/Low*).
+### 🔍 04. OSINT PENCARIAN PUBLIK
+OSINT mencari referensi web publik berdasarkan nama lengkap atau username melalui Google Search, mencari kecocokan visual gambar melalui Google Lens, serta membantu menemukan kandidat tempat dari foto menggunakan Lens, analisis AI, dan Google Maps. Pengguna juga dapat melihat foto publik dari tempat yang dipilih. Fitur ini membantu menghimpun referensi publik untuk ditinjau; kecocokan nama, gambar, atau tempat bukan konfirmasi identitas seseorang maupun lokasi foto.
 
 ### 🔎 05. DORKING & RECON
 - **Pencarian Halaman Publik**: Mencari halaman yang sudah terindeks Bing melalui SerpApi dengan cakupan domain atau TLD.
@@ -92,7 +90,7 @@ ZraCyber-Core dirancang khusus untuk *Security Engineers, Penetration Testers, B
 | **Website Pentest** | SQLi, XSS, CSRF, TLS & Auth Session (Tanpa / Dengan Login) | Fuzzing parameter aktif, korelasi error & crawling form |
 | **App Mobile Audit** | MASTG Storage, Plaintext SharedPreferences & Signature Tampering | Inspeksi manifes, biner & verifikasi sertifikat APK |
 | **File & Malware** | High Entropy Packed, Webshell Scripts (`eval`, `system`, `base64`) & IoC | Shannon Entropy (> 7.2 bit/byte) & deep string regex |
-| **OSINT Recon** | Full Name Identity & Username Handle (`@handle`) di 10 Sosmed | Active Live Presence Checker & sintesis dossier AI |
+| **OSINT Pencarian Publik** | Referensi web untuk nama/username, kecocokan visual gambar, kandidat tempat, dan foto publik Maps | Google Search, Google Lens, Google Maps, dan analisis AI untuk membantu membentuk kueri tempat |
 | **Dorking & Recon** | Halaman publik terindeks berdasarkan domain/TLD dan preset query | Bing via SerpApi; pemeriksaan HTTP HEAD opsional pada maksimal 10 hasil domain terkonfirmasi |
 | **VPS Server Audit** | SSH Hardening, Cron Persistence & Post-Auth IDOR/Webshell | Inspeksi port 22, crontab anomali & autentikasi sistem |
 | **Cryptography** | AES-256-GCM & Scrypt Key Derivation Function (KDF) | Enkripsi simetris terautentikasi (Nonce + Auth Tag) |
@@ -237,8 +235,11 @@ node website_lab/server.cjs
 - Masukkan domain yang berwenang kamu periksa atau TLD, lalu pilih preset query dan jalankan pencarian.
 - Pencarian bersifat pasif secara default. Untuk domain yang kamu kelola, centang konfirmasi kewenangan agar maksimal 10 hasil diperiksa dengan HTTP HEAD. Pemeriksaan ini membaca status/header, bukan menguji payload eksploit.
 
-### 4. Menguji OSINT Identitas & Username:
-- Masukkan Nama Lengkap atau `@username` untuk memetakan dossier intelijen mendalam dan Confidence Engine.
+### 4. Menggunakan OSINT Pencarian Publik:
+- Pilih **Nama lengkap** atau **Username** untuk mencari referensi web publik di Google.
+- Pilih **Gambar Google** untuk mencari kecocokan visual melalui Google Lens, atau **Google Maps dari Foto** untuk memperoleh kandidat tempat berdasarkan gambar.
+- Pada hasil Maps, pilih tempat yang sesuai untuk melihat foto publik dan gunakan tombol pemuatan foto berikutnya jika tersedia.
+- Kecocokan pencarian adalah petunjuk untuk ditinjau, bukan konfirmasi identitas atau lokasi. Gambar yang diunggah dibatasi maksimal 500 KB.
 
 ### 5. Menguji Modul File & Malware Analysis (File Lab Lokal):
 - Pilih sampel `suspicious_invoice.pdf` dari direktori `file_lab/` untuk mendeteksi payload webshell.
@@ -254,7 +255,7 @@ Application/
 │   ├── tools_website.tsx     # Modul Website Penetration Testing
 │   ├── tools_app.tsx         # Modul App Mobile Audit
 │   ├── tools_file.tsx        # Modul File & Malware Analysis
-│   ├── tools_osint.tsx       # Modul OSINT Social Media & Identity
+│   ├── tools_osint.tsx       # Modul OSINT Google Search, Lens & Maps
 │   ├── tools_dorking.tsx     # Modul Dorking & Recon
 │   ├── tools_vps.tsx         # Modul VPS & Server Security
 │   └── tools_cryptography.tsx# Modul Kriptografi & Cipher
