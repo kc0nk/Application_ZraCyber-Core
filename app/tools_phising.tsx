@@ -104,7 +104,7 @@ export default function ToolsPhisingScreen() {
             keyboardType="url"
           />
           <Text style={{ color: ZRA.muted, fontSize: 11, lineHeight: 16 }}>
-            Gunakan URL publik. Pemindai mengambil halaman dengan HTTP GET, mengikuti maksimal 3 redirect, dan membaca maksimal 512 KB HTML. JavaScript situs tidak dijalankan dan form tidak dikirim. Untuk latihan, gunakan tombol lab lokal.
+            Gunakan URL publik. Pemindai mengambil halaman dengan HTTP GET, mengikuti maksimal 3 redirect, dan membaca maksimal 512 KB HTML serta pola skrip inline secara statis. JavaScript tidak dijalankan dan form tidak dikirim. Untuk latihan, gunakan tombol lab lokal.
           </Text>
           <Pressable
             accessibilityRole="button"

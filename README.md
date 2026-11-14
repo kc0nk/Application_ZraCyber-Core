@@ -61,7 +61,7 @@ OSINT mencari referensi web publik berdasarkan nama lengkap atau username melalu
 `tools_dorking.tsx` adalah layar pencarian halaman publik yang sudah terindeks, dengan cakupan domain atau TLD dan preset query seperti `inurl:upload`, `inurl:admin`, `filetype:pdf`, `inurl:api`, dan `ext:php`. Pencarian saat ini dilakukan melalui Bing menggunakan SerpApi (bukan Google). Secara default pencarian bersifat pasif; pemeriksaan HTTP HEAD opsional hanya tersedia untuk maksimal 10 hasil pada domain yang kewenangannya dikonfirmasi, dan tidak mengirim payload eksploit.
 
 ### 🛡️ 06. PHISHING URL CHECK
-`tools_phising.tsx` memeriksa indikator phishing pada URL dan halaman publik. Pemindai memakai satu HTTP GET, menganalisis alamat URL dan HTML terbatas, lalu menampilkan tingkat indikasi, skor, dan bukti. Pemindai tidak mengirim form atau kredensial dan tidak menjalankan JavaScript. Skor heuristik membantu triase, bukan memastikan situs pasti phishing atau aman.
+`tools_phising.tsx` memeriksa indikator phishing pada URL dan halaman publik, termasuk form password yang diarahkan ke layanan webhook, pola statis akses `document.cookie`/browser storage, pembacaan field sensitif, dan mekanisme pengiriman jaringan. Pemindai memakai satu HTTP GET dan membaca HTML/skrip inline secara statis; JavaScript tidak dijalankan dan form/kredensial tidak dikirim. Skor heuristik membantu triase, bukan memastikan situs pasti phishing atau aman. Skrip eksternal tidak diunduh.
 
 ### 🖥️ 07. VPS & SERVER SECURITY (Dual-Mode: External & Internal)
 - **External Scan (Tanpa Login)**: Audit permukaan eksternal, eksposur port terbuka (TCP 22/80/443/3306/dll.), servis, banner, dan DNS.

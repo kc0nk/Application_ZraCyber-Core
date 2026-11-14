@@ -15,6 +15,6 @@ Server hanya bind ke `127.0.0.1:8091` dan menyajikan halaman di `/login-demo`.
 1. Jalankan Desktop Controller dan server lab pada komputer yang sama.
 2. Di aplikasi, buka **Phishing Check** lalu tekan **Isi URL Lab Phishing Lokal**.
 3. Tekan **Periksa Indikator Phishing**. Mode lab hanya mengizinkan alamat demo tetap `http://127.0.0.1:8091/login-demo`.
-4. Hasil yang diharapkan adalah indikasi tinggi berdasarkan halaman latihan, host IP, judul brand yang tidak cocok dengan domain, dan form password yang mengarah ke domain `.invalid`.
+4. Hasil yang diharapkan adalah indikasi tinggi berdasarkan halaman latihan, host IP, judul brand yang tidak cocok dengan domain, form password lintas origin, serta contoh inert akses `document.cookie` + `fetch`.
 
-Pemindaian biasa tetap menolak alamat loopback/private. Pengecualian hanya berlaku ketika mode lab dipilih dan host, port, serta path cocok persis dengan endpoint demo di atas. Tidak ada endpoint yang menerima kredensial.
+Kode indikator cookie di halaman disimpan sebagai `<script type="text/plain">`, jadi browser tidak menjalankannya. Pemindaian biasa tetap menolak alamat loopback/private. Pengecualian hanya berlaku ketika mode lab dipilih dan host, port, serta path cocok persis dengan endpoint demo di atas. Tidak ada endpoint yang menerima kredensial.
