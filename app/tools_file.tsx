@@ -7,9 +7,10 @@ import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system/legacy";
 
 import { BrandHeader, Field, Panel, PrimaryButton, SecondaryButton, ScreenShell, SectionHeading, StatusPill, useZraTheme } from "@/components/zra-ui";
-import { MarkdownRenderer } from "@/components/markdown-renderer";
+import { AuditWriteup } from "@/components/audit-writeup";
 import { AuditHistoryList, filterAuditHistory } from "@/components/audit-history";
 import { useAppState } from "@/lib/app-state";
+import { useProgressiveReport } from "@/hooks/use-progressive-report";
 
 export default function ToolsFileScreen() {
   const router = useRouter();
@@ -19,7 +20,7 @@ export default function ToolsFileScreen() {
   const [selectedFile, setSelectedFile] = useState<DocumentPicker.DocumentPickerAsset | null>(null);
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState("");
-  const [reportData, setReportData] = useState<any | null>(null);
+  const { report: reportData, revealReport, clearReport } = useProgressiveReport();
   const [scanProgress, setScanProgress] = useState<number | null>(null);
   const [scanPhase, setScanPhase] = useState("");
   const [terminalLogs, setTerminalLogs] = useState([
@@ -42,7 +43,7 @@ export default function ToolsFileScreen() {
       if (result.canceled || !result.assets?.length) return;
       const asset = result.assets[0];
       setSelectedFile(asset);
-      setReportData(null);
+      clearReport();
       setFeedback("Berkas artefak siap dipindai.");
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : "Gagal memilih file.");
@@ -56,7 +57,7 @@ export default function ToolsFileScreen() {
     }
 
     setBusy(true);
-    setReportData(null);
+    clearReport();
     setFeedback("Menjalankan pipeline pemindaian file & malware...");
     setScanProgress(10);
     setScanPhase("Target Profiling & Hash Identity...");
@@ -102,11 +103,9 @@ export default function ToolsFileScreen() {
       }
 
       const report = JSON.parse(uploadResult.body);
-      setReportData(report);
-      setScanProgress(100);
-      setScanPhase("Analisis file selesai.");
-      setFeedback(`Analisis file ${selectedFile.name} selesai: ${report.stats?.total || 0} temuan.`);
-
+      setScanProgress(90);
+      setScanPhase("Menampilkan temuan satu per satu...");
+      setFeedback(`Analisis selesai: ${report.stats?.total || 0} temuan. Menampilkan hasil...`);
       addHistory({
         kind: "SCAN",
         title: `File Scan: ${selectedFile.name}`,
@@ -115,6 +114,12 @@ export default function ToolsFileScreen() {
         payload: { action: "scan_file_deep" },
         result: report,
       });
+      await revealReport(report, (finding) => {
+        const title = String(finding.title || finding.check || "Temuan terkonfirmasi");
+        setTerminalLogs((current) => [...current, `[SUCCESS] ${title}`]);
+      });
+      setScanProgress(100);
+      setScanPhase("Analisis file selesai.");
     } catch (error: any) {
       const message = error instanceof Error ? error.message : "Analisis file gagal.";
       setFeedback(`Gagal menjalankan analisis: ${message}`);
@@ -257,21 +262,7 @@ export default function ToolsFileScreen() {
         {/* Tempat menampilkan hasil pemeriksaan file. */}
         <Panel style={{ gap: 14, backgroundColor: ZRA.surfaceRaised }}>
           <SectionHeading label="Hasil/Output" />
-          {reportData && reportData.vulnerabilities && reportData.vulnerabilities.length > 0 ? (
-            reportData.vulnerabilities.map((item: any, idx: number) => (
-              <View key={idx} style={{ padding: 12, borderRadius: 10, backgroundColor: ZRA.surface, borderWidth: 1, borderColor: ZRA.border, gap: 8 }}>
-                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                  <Text style={{ color: ZRA.text, fontSize: 13, fontWeight: "800", flex: 1 }}>{idx + 1}. {item.title || item.check}</Text>
-                  <StatusPill label={item.severity || "High"} tone={item.severity === "Critical" ? "red" : "amber"} />
-                </View>
-                <MarkdownRenderer content={item.summary || item.detail || ""} textColor={ZRA.muted} codeColor={ZRA.mint} fontSize={11} />
-              </View>
-            ))
-          ) : (
-            <Text style={{ color: ZRA.muted, fontSize: 11, fontStyle: "italic", textAlign: "center", paddingVertical: 12 }}>
-              Belum ada hasil pemindaian berkas. Silakan jalankan analisis.
-            </Text>
-          )}
+          <AuditWriteup report={reportData} showStats={false} emptyMessage="Belum ada hasil pemindaian berkas. Silakan jalankan analisis." />
         </Panel>
 
         {/* Daftar pemindaian berkas sebelumnya. */}

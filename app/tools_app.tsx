@@ -7,9 +7,10 @@ import { useState } from "react";
 import { Platform, Pressable, ScrollView, Text, View } from "react-native";
 
 import { BrandHeader, Field, Panel, PrimaryButton, SecondaryButton, ScreenShell, SectionHeading, StatusPill, useZraTheme } from "@/components/zra-ui";
-import { MarkdownRenderer } from "@/components/markdown-renderer";
+import { AuditWriteup } from "@/components/audit-writeup";
 import { AuditHistoryList, filterAuditHistory } from "@/components/audit-history";
 import { useAppState } from "@/lib/app-state";
+import { useProgressiveReport } from "@/hooks/use-progressive-report";
 
 // ============================================================================
 // APP SCAN LIMITS
@@ -30,7 +31,7 @@ export default function ToolsAppScreen() {
   const [selectedFile, setSelectedFile] = useState<DocumentPicker.DocumentPickerAsset | null>(null);
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState("");
-  const [reportData, setReportData] = useState<any | null>(null);
+  const { report: reportData, revealReport, clearReport } = useProgressiveReport();
   const [scanProgress, setScanProgress] = useState<number | null>(null);
   const [scanPhase, setScanPhase] = useState("");
   const [terminalLogs, setTerminalLogs] = useState([
@@ -38,7 +39,6 @@ export default function ToolsAppScreen() {
     "[IDLE] Menunggu unggahan artefak APK, IPA, atau EXE...",
   ]);
   const appHistory = filterAuditHistory(history, "app");
-  const activeStats = reportData?.stats || { critical: 0, high: 0, medium: 0, low: 0, info: 0 };
 
   // ============================================================================
   // FILE PICKER
@@ -48,17 +48,18 @@ export default function ToolsAppScreen() {
       const result = await DocumentPicker.getDocumentAsync({ type: "*/*", copyToCacheDirectory: true });
       if (result.canceled || !result.assets?.length) return;
       const asset = result.assets[0];
+      setSelectedFile(null);
+      clearReport();
       const extension = asset.name.split(".").pop()?.toLowerCase();
       if (!extension || !["apk", "ipa", "exe"].includes(extension)) {
         setFeedback("Format tidak didukung. Pilih file APK, IPA, atau EXE.");
         return;
       }
-      if (!asset.size || asset.size > MAX_APP_SAMPLE_BYTES) {
+      if (asset.size == null || asset.size === 0 || asset.size > MAX_APP_SAMPLE_BYTES) {
         setFeedback("Ukuran file harus diketahui dan tidak boleh lebih dari 200 MiB.");
         return;
       }
       setSelectedFile(asset);
-      setReportData(null);
       setFeedback("");
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : "Gagal memilih file.");
@@ -70,21 +71,25 @@ export default function ToolsAppScreen() {
   // ============================================================================
   const handleRunScan = async () => {
     if (!selectedFile) return;
+    if (!tokenPresent) {
+      setFeedback("Hubungkan aplikasi ke Desktop dengan API Key aktif sebelum mengunggah berkas.");
+      return;
+    }
     const fileSize = selectedFile.size || 0;
+    const targetUrl = (apiUrl || "http://127.0.0.1:4317").replace(/\/+$/, "");
 
     setBusy(true);
-    setReportData(null);
+    clearReport();
     setFeedback("Mengunggah artefak ke Desktop Scanner...");
     setScanProgress(25);
     setScanPhase("Uploading binary to Desktop Controller...");
     setTerminalLogs([
       `[START] Memulai inspeksi statis biner: ${selectedFile.name}`,
       `[INFO] Ukuran berkas: ${(fileSize / (1024 * 1024)).toFixed(2)} MB`,
-      `[UPLOAD] Mengirimkan file ke ${apiUrl}/tools/app/scan...`
+      `[UPLOAD] Mengirimkan file ke ${targetUrl}/tools/app/scan...`
     ]);
 
     try {
-      const targetUrl = apiUrl || "http://127.0.0.1:4317";
       const uploadResult = await FileSystem.uploadAsync(`${targetUrl}/tools/app/scan`, selectedFile.uri, {
         headers: {
           "Accept": "application/json",
@@ -108,10 +113,9 @@ export default function ToolsAppScreen() {
       }
 
       const report = JSON.parse(uploadResult.body);
-      setReportData(report);
-      setScanProgress(100);
-      setScanPhase("Analisis biner selesai.");
-      setFeedback(`Inspeksi ${selectedFile.name} selesai: ${report.stats?.total || 0} temuan.`);
+      setScanProgress(90);
+      setScanPhase("Menampilkan temuan satu per satu...");
+      setFeedback(`Analisis ${selectedFile.name} selesai: ${report.stats?.total || 0} temuan. Menampilkan hasil...`);
       setTerminalLogs(Array.isArray(report.logs) ? report.logs : ["[DONE] Analisis biner statis selesai."]);
 
       addHistory({
@@ -122,6 +126,12 @@ export default function ToolsAppScreen() {
         payload: { action: "scan_app_deep" },
         result: report,
       });
+      await revealReport(report, (finding) => {
+        const title = String(finding.title || finding.check || "Indikator terkonfirmasi");
+        setTerminalLogs((current) => [...current, `[SUCCESS] ${title}`]);
+      });
+      setScanProgress(100);
+      setScanPhase("Analisis biner selesai.");
     } catch (error: any) {
       const message = error instanceof Error ? error.message : "Inspeksi biner gagal.";
       setFeedback(`Gagal menjalankan analisis: ${message}`);
@@ -150,8 +160,8 @@ export default function ToolsAppScreen() {
 
         <BrandHeader
           eyebrow="ZRACORE / TOOLKIT"
-          title="App Mobile Audit."
-          subtitle="Inspeksi statis biner APK, IPA, dan EXE berbasis standar OWASP MASTG &amp; MASVS."
+          title="App & Binary Audit."
+          subtitle="Analisis statis heuristik APK, IPA, dan EXE. Sampel tidak dijalankan."
         />
 
         <Panel accent>
@@ -162,7 +172,7 @@ export default function ToolsAppScreen() {
               </View>
               <View>
                 <Text style={styles.panelTitle}>APP MOBILE AUDIT</Text>
-                <Text style={{ color: ZRA.muted, fontSize: 11, fontWeight: "600" }}>MASTG · Biner Statis</Text>
+                <Text style={{ color: ZRA.muted, fontSize: 11, fontWeight: "600" }}>Static Heuristics · APK / IPA / PE</Text>
               </View>
             </View>
             <StatusPill label="REAL BACKEND" tone="mint" />
@@ -234,7 +244,7 @@ export default function ToolsAppScreen() {
             ))}
             {busy ? (
               <Text style={{ color: ZRA.mint, fontSize: 10, fontFamily: Platform.OS === "ios" ? "Courier" : "monospace" }}>
-                &gt; Binary parsing & MASTG compliance analysis in progress... _
+                &gt; Static sample analysis in progress... _
               </Text>
             ) : null}
           </View>
@@ -245,17 +255,7 @@ export default function ToolsAppScreen() {
           <SectionHeading label="Hasil/Output" />
           {reportData && reportData.vulnerabilities ? (
             <View style={{ padding: 12, borderRadius: 10, backgroundColor: ZRA.surface, borderWidth: 1, borderColor: ZRA.border, gap: 8 }}>
-              <Text style={{ color: ZRA.text, fontSize: 13, fontWeight: "800" }}>{"// HASIL ANALISIS BINER APK/IPA"}</Text>
-              <Text style={{ color: ZRA.muted, fontSize: 11 }}>{reportData.summary}</Text>
-              {reportData.vulnerabilities.map((item: any, idx: number) => (
-                <View key={idx} style={{ padding: 10, borderRadius: 8, backgroundColor: ZRA.surfaceRaised, borderWidth: 1, borderColor: ZRA.border, gap: 6, marginTop: 4 }}>
-                  <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                    <Text style={{ color: ZRA.text, fontSize: 12, fontWeight: "800", flex: 1 }}>{idx + 1}. {item.title || item.check}</Text>
-                    <StatusPill label={item.severity || "High"} tone={item.severity === "Critical" ? "red" : "amber"} />
-                  </View>
-                  <MarkdownRenderer content={item.summary || item.detail || ""} textColor={ZRA.muted} codeColor={ZRA.mint} fontSize={11} />
-                </View>
-              ))}
+              <AuditWriteup report={reportData} showStats={false} emptyMessage="Belum ada temuan pada berkas ini." />
             </View>
           ) : (
             <Text style={{ color: ZRA.muted, fontSize: 11, fontStyle: "italic", textAlign: "center", paddingVertical: 12 }}>

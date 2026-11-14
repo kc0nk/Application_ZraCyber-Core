@@ -140,6 +140,7 @@ async function loadConfig() {
       .map(({ pairTokenHash: _pairTokenHash, ...device }) => device);
 
     const groqApiKey = typeof saved.groqApiKey === "string" && saved.groqApiKey.trim() ? saved.groqApiKey : "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";
+    const serpApiKey = typeof saved.serpApiKey === "string" ? saved.serpApiKey.trim() : "";
 
     return {
       host: savedHost,
@@ -149,13 +150,15 @@ async function loadConfig() {
       devices,
       anomalousDevices,
       groqApiKey,
+      serpApiKey,
       updateRelease: saved.updateRelease && typeof saved.updateRelease.version === "string" ? saved.updateRelease : null,
       blockedDevices: Array.isArray(saved.blockedDevices) ? saved.blockedDevices.filter((item) => item && typeof item.id === "string") : [],
       releasedDevices: Array.isArray(saved.releasedDevices) ? saved.releasedDevices.filter((item) => item && typeof item.id === "string") : [],
+      forcedUninstallDevices: Array.isArray(saved.forcedUninstallDevices) ? saved.forcedUninstallDevices.filter((id) => typeof id === "string") : [],
     };
   } catch (error) {
     if (error.code !== "ENOENT" && !(error instanceof SyntaxError)) throw error;
-    return { host: "127.0.0.1", port: DEFAULT_PORT, token: "", tokens: [], devices: [], anomalousDevices: [], blockedDevices: [], releasedDevices: [], updateRelease: null, groqApiKey: "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" };
+    return { host: "127.0.0.1", port: DEFAULT_PORT, token: "", tokens: [], devices: [], anomalousDevices: [], blockedDevices: [], releasedDevices: [], updateRelease: null, groqApiKey: "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", serpApiKey: "" };
   }
 }
 
@@ -238,6 +241,7 @@ function makeApiServer() {
   return createApiServer({
     getToken: () => (config.tokens ?? []).filter((entry) => !entry.revokedAt).map((entry) => entry.value),
     getGroqApiKey: () => config.groqApiKey || process.env.GROQ_API_KEY || "",
+    getSerpApiKey: () => config.serpApiKey || process.env.SERPAPI_API_KEY || "",
     getUpdateRelease: () => config.updateRelease,
     isForcedUninstall: (deviceId) => (config.forcedUninstallDevices ?? []).includes(deviceId),
     registerDevice: async (identity, ip, presentedToken) => {
@@ -622,7 +626,7 @@ ipcMain.handle("database:clear", async () => {
     type: "warning",
     title: "Kosongkan isi database?",
     message: "Semua data tersimpan akan dihapus.",
-    detail: "Kredensial lama, perangkat, daftar blokir, informasi update, dan riwayat akan dikosongkan. File database serta alamat dan port API tetap dipertahankan. Tindakan ini tidak dapat dibatalkan.",
+    detail: "Kredensial lama, perangkat, daftar blokir, riwayat perangkat dilepas, status force uninstall, informasi update, dan riwayat audit akan dikosongkan. File database serta alamat dan port API tetap dipertahankan. Tindakan ini tidak dapat dibatalkan.",
     buttons: ["Batal", "Kosongkan database"],
     defaultId: 0,
     cancelId: 0,
@@ -634,6 +638,8 @@ ipcMain.handle("database:clear", async () => {
   config.devices = [];
   config.anomalousDevices = [];
   config.blockedDevices = [];
+  config.releasedDevices = [];
+  config.forcedUninstallDevices = [];
   config.updateRelease = null;
   history = [];
   chatMessages = [];
@@ -766,10 +772,20 @@ ipcMain.handle("devices:unblock", async (_event, deviceId) => {
 });
 ipcMain.handle("devices:uninstall", async (_event, deviceId) => {
   if (typeof deviceId !== "string") throw new Error("Device tidak ditemukan.");
+  const device = config.devices.find((entry) => entry.id === deviceId) ??
+    (config.anomalousDevices ?? []).find((entry) => entry.id === deviceId);
+  if (!device) throw new Error("Perangkat tidak ditemukan di daftar Desktop.");
   if (!config.forcedUninstallDevices) config.forcedUninstallDevices = [];
   if (!config.forcedUninstallDevices.includes(deviceId)) {
     config.forcedUninstallDevices.push(deviceId);
   }
+  config.devices = config.devices.filter((entry) => entry.id !== deviceId);
+  config.anomalousDevices = (config.anomalousDevices ?? []).filter((entry) => entry.id !== deviceId);
+  if (!config.releasedDevices) config.releasedDevices = [];
+  if (!config.releasedDevices.some((entry) => entry.id === deviceId)) {
+    config.releasedDevices.push({ ...device, releasedAt: new Date().toISOString(), releaseReason: "forced-uninstall" });
+  }
+  const now = new Date().toISOString();
   chatMessages.push({
     id: crypto.randomUUID(),
     deviceId,
@@ -777,7 +793,41 @@ ipcMain.handle("devices:uninstall", async (_event, deviceId) => {
     senderName: "C2 Administrator",
     type: "command",
     text: "EXEC_CMD:UNINSTALL_APP_COMMAND",
-    timestamp: new Date().toISOString(),
+    timestamp: now,
+    verified: true,
+  });
+  await writeJson(getChatPath(), chatMessages);
+  await writeJson(getConfigPath(), config);
+  publishState();
+  return getPublicState();
+});
+ipcMain.handle("devices:restore-uninstall", async (_event, deviceId) => {
+  if (typeof deviceId !== "string") throw new Error("Device tidak ditemukan.");
+  const record = (config.releasedDevices ?? []).find((entry) => entry.id === deviceId && entry.releaseReason === "forced-uninstall");
+  if (!record) throw new Error("Riwayat force uninstall tidak ditemukan.");
+
+  config.forcedUninstallDevices = (config.forcedUninstallDevices ?? []).filter((id) => id !== deviceId);
+  const { releasedAt: _releasedAt, releaseReason: _releaseReason, accessRestoredAt: _accessRestoredAt, ...device } = record;
+  config.devices = [...(config.devices ?? []).filter((entry) => entry.id !== deviceId), {
+    ...device,
+    lastSeenAt: new Date().toISOString(),
+  }];
+  config.releasedDevices = (config.releasedDevices ?? []).filter((entry) => entry.id !== deviceId);
+  config.tokens = (config.tokens ?? []).map((token) => {
+    if (token.deviceId !== deviceId) return token;
+    const { revokedAt: _revokedAt, ...activeToken } = token;
+    return activeToken;
+  });
+
+  const now = new Date().toISOString();
+  chatMessages.push({
+    id: crypto.randomUUID(),
+    deviceId,
+    sender: "desktop",
+    senderName: "C2 Administrator",
+    type: "command",
+    text: "EXEC_CMD:UNBLOCK_DEVICE_COMMAND",
+    timestamp: now,
     verified: true,
   });
   await writeJson(getChatPath(), chatMessages);
@@ -945,6 +995,15 @@ ipcMain.handle("groqKey:get", () => config.groqApiKey ?? "");
 ipcMain.handle("groqKey:save", async (_, key) => {
   if (!key) return false;
   config.groqApiKey = key.trim();
+  await writeJson(getConfigPath(), config);
+  publishState();
+  return true;
+});
+
+ipcMain.handle("serpApiKey:get", () => config.serpApiKey ?? "");
+ipcMain.handle("serpApiKey:save", async (_, key) => {
+  if (typeof key !== "string" || !key.trim()) return false;
+  config.serpApiKey = key.trim();
   await writeJson(getConfigPath(), config);
   publishState();
   return true;

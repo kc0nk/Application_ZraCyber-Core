@@ -5,9 +5,6 @@ function buildIdentityGraph(entity, profiles) {
       relationships.push(`USES_USERNAME: ${entity.username} -> ${p.platform}`);
     });
   }
-  if (entity.email) {
-    relationships.push(`REFERENCES_EMAIL: ${entity.email} -> Target Identity`);
-  }
   return { entity, relationships };
 }
 

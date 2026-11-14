@@ -22,6 +22,13 @@ export default function OverviewScreen() {
 
   const toolCategories = [
     {
+      id: "dorking",
+      title: "Dorking & Recon",
+      subtitle: "Google Dorking, URL Collector & PHP RCE",
+      icon: "search-outline" as const,
+      route: "/tools_dorking" as const,
+    },
+    {
       id: "website",
       title: "Website Pentest",
       subtitle: "Audit & Fuzzing AI Web Target",

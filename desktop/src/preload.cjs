@@ -12,6 +12,8 @@ contextBridge.exposeInMainWorld("zraDesktop", {
   releaseDevice: (deviceId) => ipcRenderer.invoke("devices:release", deviceId),
   blockDevice: (deviceId) => ipcRenderer.invoke("devices:block", deviceId),
   unblockDevice: (deviceId) => ipcRenderer.invoke("devices:unblock", deviceId),
+  uninstallDevice: (deviceId) => ipcRenderer.invoke("devices:uninstall", deviceId),
+  restoreUninstalledDevice: (deviceId) => ipcRenderer.invoke("devices:restore-uninstall", deviceId),
   getChatMessages: (deviceId) => ipcRenderer.invoke("chat:get-messages", deviceId),
   sendChatMessage: (payload) => ipcRenderer.invoke("chat:send", payload),
   deleteChatMessage: (payload) => ipcRenderer.invoke("chat:delete-message", payload),
@@ -27,6 +29,8 @@ contextBridge.exposeInMainWorld("zraDesktop", {
   startTunnel: () => ipcRenderer.invoke("agent:start-tunnel"),
   getGroqKey: () => ipcRenderer.invoke("groqKey:get"),
   saveGroqKey: (key) => ipcRenderer.invoke("groqKey:save", key),
+  getSerpApiKey: () => ipcRenderer.invoke("serpApiKey:get"),
+  saveSerpApiKey: (key) => ipcRenderer.invoke("serpApiKey:save", key),
   chatLlm: (prompt) => ipcRenderer.invoke("llm:chat", prompt),
   exportPdfReport: (html) => ipcRenderer.invoke("reports:export-pdf", html),
   onMaximizeStateChanged: (callback) => {

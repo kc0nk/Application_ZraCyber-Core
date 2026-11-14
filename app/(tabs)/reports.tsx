@@ -5,22 +5,31 @@ import * as Sharing from "expo-sharing";
 import { useState } from "react";
 import { Platform, Pressable, ScrollView, Text, View } from "react-native";
 
-import { ApiKeyNotice, BrandHeader, Panel, PrimaryButton, SecondaryButton, ScreenShell, SectionHeading, StatusPill, useZraTheme } from "@/components/zra-ui";
-import { MarkdownRenderer } from "@/components/markdown-renderer";
+import { BrandHeader, Panel, PrimaryButton, SecondaryButton, ScreenShell, SectionHeading, StatusPill, useZraTheme } from "@/components/zra-ui";
+import { AuditWriteup } from "@/components/audit-writeup";
 import { useAppState, HistoryItem } from "@/lib/app-state";
+
+const escapeHtml = (value: unknown) => String(value ?? "")
+  .replace(/&/g, "&amp;")
+  .replace(/</g, "&lt;")
+  .replace(/>/g, "&gt;")
+  .replace(/"/g, "&quot;")
+  .replace(/'/g, "&#39;");
+
+const snapCodeHtml = (title: string, language: string, value: unknown) => {
+  const code = typeof value === "string" ? value : JSON.stringify(value, null, 2);
+  if (!code) return "";
+  return `<section class="snap-code"><header><i></i><i></i><i></i><strong>${escapeHtml(title)}</strong><span>${escapeHtml(language)}</span></header><pre>${escapeHtml(code)}</pre></section>`;
+};
 
 export default function ReportsScreen() {
   const { ZRA, styles } = useZraTheme();
-  const { hasDesktopApi, history, clearHistory } = useAppState();
+  const { history, clearHistory } = useAppState();
 
   const [exporting, setExporting] = useState(false);
   const [feedback, setFeedback] = useState("");
   const currentDate = new Date().toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
   const aiAuthorName = "ZraCore AI Cyber Intelligence Core v3.0";
-
-  if (!hasDesktopApi) {
-    return <ApiKeyNotice locationRequired={false} />;
-  }
 
   const allHistoryItems: HistoryItem[] = history || [];
 
@@ -35,75 +44,27 @@ export default function ReportsScreen() {
 
     try {
       const itemsHtml = allHistoryItems.map((item, idx) => {
-        const title = item.title || "Audit Item";
-        const subtitle = item.subtitle || "";
-        const date = new Date(item.createdAt).toLocaleString("id-ID");
+        const title = escapeHtml(item.title || "Audit Item");
+        const subtitle = escapeHtml(item.subtitle || "");
+        const date = escapeHtml(new Date(item.createdAt).toLocaleString("id-ID"));
         const res: any = item.result || {};
-
-        let detailsHtml = "";
-
-        // OSINT Dossier Details
-        if (res.visualIntelligence) {
-          const entities = res.visualIntelligence.detected_entities?.join(", ") || title;
-          const summary = res.visualIntelligence.geolocation?.formatted_address || res.summary || "";
-          const matches = res.visualIntelligence.google_search_matches || [];
-
-          detailsHtml = `
-            <div class="section-title">DOSSIER INTELIJEN OSINT & JEJAK DIGITAL</div>
-            <p><strong>Target Entitas:</strong> ${entities}</p>
-            <div class="summary-box"><strong>Sintesis Intelijen AI:</strong><br/>${summary.replace(/\n/g, "<br/>")}</div>
-            ${matches.length > 0 ? `
-              <div class="section-title">TAUTAN PROFIL & REKON TERDETEKSI (${matches.length})</div>
-              <table>
-                <thead><tr><th>No</th><th>Platform / Sumber</th><th>URL Direct Link</th></tr></thead>
-                <tbody>
-                  ${matches.map((m: any, i: number) => `
-                    <tr>
-                      <td>${i + 1}</td>
-                      <td><strong>${m.title || m.platform || "Social Profile"}</strong></td>
-                      <td><a href="${m.url}" target="_blank">${m.url}</a></td>
-                    </tr>
-                  `).join("")}
-                </tbody>
-              </table>
-            ` : ""}
-          `;
-        }
-        // Findings / Vulnerabilities List
-        else if (res.vulnerabilities || res.findings) {
-          const list = res.vulnerabilities || res.findings || [];
-          detailsHtml = `
-            <div class="section-title">TEMUAN & OBSERVASI KEAMANAN (${list.length})</div>
-            ${list.map((f: any, i: number) => `
-              <div class="finding-card">
-                <div class="finding-header">
-                  <strong>${i + 1}. ${f.title || f.check || "Temuan Keamanan"}</strong>
-                  <span class="badge ${ (f.severity || "info").toLowerCase() }">${(f.severity || "INFO").toUpperCase()}</span>
-                </div>
-                <p style="margin: 4px 0;">${f.summary || f.detail || ""}</p>
-                ${f.pocCode || f.poc ? `<code>PoC: ${f.pocCode || f.poc}</code>` : ""}
-                ${f.recommendation || f.remediationPatch ? `<p style="font-size: 9px; color: #047857; margin-top: 4px;"><strong>Rekomendasi:</strong> ${f.recommendation || f.remediationPatch}</p>` : ""}
-              </div>
-            `).join("")}
-          `;
-        }
-        // Cryptography Details
-        else if (res.cryptoResult) {
-          const enc = res.cryptoResult.encrypt;
-          const dec = res.cryptoResult.decrypt;
-          detailsHtml = `
-            <div class="section-title">KALKULASI KRIPTOGRAFI AES-256-GCM</div>
-            ${enc ? `
-              <p><strong>Ciphertext:</strong> <code>${enc.chipertext}</code></p>
-              <p><strong>Parameter:</strong> ${enc.parameter}</p>
-            ` : ""}
-            ${dec ? `
-              <p><strong>Plaintext Terbuka:</strong> <code>${dec.plaintext}</code></p>
-            ` : ""}
-          `;
-        } else if (res.summary) {
-          detailsHtml = `<p>${res.summary}</p>`;
-        }
+        const findings: any[] = Array.isArray(res.vulnerabilities) ? res.vulnerabilities : Array.isArray(res.findings) ? res.findings : [];
+        const findingsHtml = findings.length ? `<div class="section-title">WRITE-UP · TEMUAN (${findings.length})</div>${findings.map((finding: any, i: number) => {
+          const evidence = finding.pocCode || finding.pocSnippet || finding.poc || finding.code || finding.command || finding.evidence || finding.location || finding.endpoint || { check: finding.check || "Observasi" };
+          return `<article class="finding-card"><strong>${i + 1}. ${escapeHtml(finding.title || finding.check || "Observasi")}</strong><p>${escapeHtml(finding.summary || finding.detail || finding.description || "")}</p>${finding.impact ? `<p><b>Dampak:</b> ${escapeHtml(finding.impact)}</p>` : ""}${finding.recommendation || finding.remediation || finding.remediationPatch ? `<p><b>Rekomendasi:</b> ${escapeHtml(finding.recommendation || finding.remediation || finding.remediationPatch)}</p>` : ""}${snapCodeHtml("Bukti / kode terkait", finding.language || "text", evidence)}</article>`;
+        }).join("")}` : "";
+        const matches: any[] = res.visualIntelligence?.google_search_matches || [];
+        const linksHtml = matches.length ? `<div class="section-title">TAUTAN REFERENSI (${matches.length})</div>${matches.map((match: any) => `<p>${escapeHtml(match.title || match.platform || "Referensi")}: ${escapeHtml(match.url || "")}</p>`).join("")}` : "";
+        const imageMatches: any[] = Array.isArray(res.imageMatches) ? res.imageMatches : [];
+        const imageMatchesHtml = imageMatches.length ? `<div class="section-title">KECOCOKAN GOOGLE LENS (${imageMatches.length})</div>${imageMatches.map((match: any, i: number) => `<article class="finding-card"><strong>${i + 1}. ${escapeHtml(match.title || "Kecocokan visual")}</strong>${match.summary ? `<p>${escapeHtml(match.summary)}</p>` : ""}${match.url ? snapCodeHtml("Referensi", "url", match.url) : ""}</article>`).join("")}` : "";
+        const urls: any[] = Array.isArray(res.urls) ? res.urls : [];
+        const resultsHtml = urls.length ? `<div class="section-title">HASIL TERKAIT (${urls.length})</div>${urls.slice(0, 50).map((entry: any, i: number) => `<article class="finding-card"><strong>${i + 1}. ${escapeHtml(entry.title || "Hasil")}</strong>${entry.url ? snapCodeHtml("Referensi", "url", entry.url) : ""}<p>HTTP ${escapeHtml(entry.httpStatus ?? "Belum diperiksa")} · PHP ${escapeHtml(entry.phpVersion || "tidak diumumkan")} · Server ${escapeHtml(entry.serverHeader || "tidak diumumkan")}</p>${entry.summary ? `<p>${escapeHtml(entry.summary)}</p>` : ""}${entry.evidence ? snapCodeHtml("Bukti hasil", "json", entry.evidence) : ""}</article>`).join("")}` : "";
+        const summary = res.visualIntelligence?.geolocation?.formatted_address || res.summary;
+        const summaryHtml = typeof summary === "string" ? `<div class="summary-box"><strong>WRITE-UP · RINGKASAN</strong><br/>${escapeHtml(summary).replace(/\n/g, "<br/>")}</div>` : summary && typeof summary === "object" ? snapCodeHtml("Ringkasan statistik", "json", summary) : "";
+        const query = res.searchQuery || res.query;
+        const extraCode = [res.evidence ? snapCodeHtml("Bukti teknis", "json", res.evidence) : "", res.codeSamples ? snapCodeHtml("Kode terkait audit", "code", res.codeSamples) : "", Array.isArray(res.logs) && res.logs.length ? snapCodeHtml("Log audit", "log", res.logs.join("\n")) : "", res.output ? snapCodeHtml("Output teknis", "text", res.output) : ""].join("");
+        const crypto = res.cryptoResult ? snapCodeHtml("Hasil kriptografi", "json", res.cryptoResult) : "";
+        const detailsHtml = `${summaryHtml}${query ? snapCodeHtml("Query audit", "query", query) : ""}${findingsHtml}${resultsHtml}${linksHtml}${imageMatchesHtml}${crypto}${extraCode}`;
 
         return `
           <div class="report-block">
@@ -139,6 +100,13 @@ export default function ReportsScreen() {
               .block-date { font-size: 9px; color: #64748b; }
               .section-title { font-size: 10px; font-weight: bold; color: #0369a1; text-transform: uppercase; margin: 10px 0 6px 0; border-bottom: 1px solid #bae6fd; padding-bottom: 2px; }
               .summary-box { background: #f0f9ff; border-left: 3px solid #0284c7; padding: 8px 10px; font-size: 10px; color: #1e293b; margin: 6px 0; border-radius: 0 4px 4px 0; }
+              .snap-code { overflow: hidden; margin: 7px 0; border: 1px solid #273449; border-radius: 7px; background: #0b1020; color: #d1fae5; page-break-inside: avoid; }
+              .snap-code header { display: flex; align-items: center; gap: 5px; min-height: 25px; padding: 0 8px; border-bottom: 1px solid #202b3d; background: #111827; color: #cbd5e1; font-size: 8px; }
+              .snap-code header i { width: 6px; height: 6px; border-radius: 50%; background: #fb7185; }
+              .snap-code header i:nth-child(2) { background: #fbbf24; } .snap-code header i:nth-child(3) { background: #34d399; }
+              .snap-code header strong { margin-left: 4px; flex: 1; }
+              .snap-code header span { color: #6ee7b7; text-transform: uppercase; }
+              .snap-code pre { margin: 0; padding: 8px; color: #d1fae5; font: 8px/1.5 Menlo, Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
               .finding-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 10px; margin-bottom: 6px; }
               .finding-header { display: flex; justify-content: space-between; align-items: center; }
               .badge { padding: 2px 6px; font-size: 8px; font-weight: bold; border-radius: 4px; color: #fff; text-transform: uppercase; }
@@ -265,9 +233,6 @@ export default function ReportsScreen() {
         ) : (
           allHistoryItems.map((item, idx) => {
             const res: any = item.result || {};
-            const matches = res.visualIntelligence?.google_search_matches || [];
-            const summaryText = res.visualIntelligence?.geolocation?.formatted_address || res.summary || "";
-
             return (
               <Panel key={item.id || idx} style={{ gap: 10, backgroundColor: ZRA.surfaceRaised }}>
                 <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
@@ -278,26 +243,7 @@ export default function ReportsScreen() {
                 <Text style={{ color: ZRA.text, fontSize: 13, fontWeight: "800" }}>{item.title}</Text>
                 <Text style={{ color: ZRA.muted, fontSize: 11 }}>{item.subtitle} · {new Date(item.createdAt).toLocaleString("id-ID")}</Text>
 
-                {summaryText ? (
-                  <View style={{ backgroundColor: ZRA.surface, padding: 10, borderRadius: 8, borderWidth: 1, borderColor: ZRA.border }}>
-                    <Text style={{ color: ZRA.amber, fontSize: 10, fontWeight: "800", marginBottom: 4 }}>RINGKASAN INTELIJEN / TEMUAN:</Text>
-                    <MarkdownRenderer content={summaryText} textColor={ZRA.text} codeColor={ZRA.mint} fontSize={11} />
-                  </View>
-                ) : null}
-
-                {matches.length > 0 ? (
-                  <View style={{ gap: 4 }}>
-                    <Text style={{ color: ZRA.amber, fontSize: 10, fontWeight: "800" }}>TAUTAN REFERENSI TERDETEKSI ({matches.length}):</Text>
-                    {matches.slice(0, 5).map((m: any, i: number) => (
-                      <Text key={i} selectable style={{ color: ZRA.mint, fontSize: 10, textDecorationLine: "underline" }}>
-                        • {m.title || m.platform}: {m.url}
-                      </Text>
-                    ))}
-                    {matches.length > 5 ? (
-                      <Text style={{ color: ZRA.muted, fontSize: 9, fontStyle: "italic" }}>+ {matches.length - 5} tautan lainnya di PDF</Text>
-                    ) : null}
-                  </View>
-                ) : null}
+                <AuditWriteup report={res} emptyMessage="Detail write-up tidak tersedia untuk laporan ini." />
               </Panel>
             );
           })

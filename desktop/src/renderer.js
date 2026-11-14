@@ -206,6 +206,7 @@ function renderState(state) {
   renderChat(state);
   renderLogs(state);
   renderHackerC2(state);
+  renderControlView(state);
   if (fleetMap) renderFleetMap(state);
 }
 
@@ -714,6 +715,21 @@ let logsClearedLocally = false;
 let lastRenderedLogCount = 0;
 const expandedLogIds = new Set();
 
+function reportJson(value) {
+  try { return JSON.stringify(value, null, 2); } catch { return String(value ?? ""); }
+}
+
+function createSnapCodeBlock(title, language, value) {
+  if (value === undefined || value === null || value === "") return null;
+  const code = typeof value === "string" ? value : reportJson(value);
+  const block = makeElement("section", "snap-code-block");
+  const header = makeElement("header", "snap-code-header");
+  header.append(makeElement("span", "snap-code-dot snap-code-dot-red"), makeElement("span", "snap-code-dot snap-code-dot-yellow"), makeElement("span", "snap-code-dot snap-code-dot-green"));
+  header.append(makeElement("strong", "snap-code-title", title), makeElement("span", "snap-code-language", language || "text"));
+  block.append(header, makeElement("pre", "snap-code-pre", code));
+  return block;
+}
+
 function renderLogs(state) {
   const container = document.querySelector("#system-logs-container");
   if (!container) return;
@@ -734,24 +750,17 @@ function renderLogs(state) {
 
   for (const h of history) {
     const card = makeElement("div", "log-audit-card");
-    card.style.padding = "16px";
-    card.style.borderRadius = "14px";
-    card.style.background = "var(--surface)";
-    card.style.border = "1px solid var(--border)";
-    card.style.display = "grid";
-    card.style.gap = "10px";
-    card.style.cursor = "pointer";
+    card.setAttribute("role", "button");
+    card.setAttribute("tabindex", "0");
+    card.setAttribute("aria-expanded", String(expandedLogIds.has(h.id)));
 
     const isExpanded = expandedLogIds.has(h.id);
 
     const topRow = makeElement("div", "", "");
-    topRow.style.display = "flex";
-    topRow.style.justifyContent = "space-between";
-    topRow.style.alignItems = "center";
+    topRow.className = "log-card-heading";
 
     const titleStrong = makeElement("strong", "", h.title);
-    titleStrong.style.fontSize = "15px";
-    titleStrong.style.color = "var(--text-main)";
+    titleStrong.className = "log-card-title";
 
     const statusBadge = makeElement("span", `job-status status-${h.status}`, h.status ? h.status.toUpperCase() : "COMPLETED");
     topRow.append(titleStrong, statusBadge);
@@ -759,21 +768,16 @@ function renderLogs(state) {
 
     if (h.subtitle) {
       const sub = makeElement("p", "", h.subtitle);
-      sub.style.fontSize = "12px";
-      sub.style.color = "var(--text-muted)";
-      sub.style.margin = "0";
+      sub.className = "log-card-subtitle";
       card.append(sub);
     }
 
     const creatorInfo = h.deviceName || h.senderName || h.deviceModel || h.payload?.deviceName || "Perangkat Mobile (HP)";
     const authorMeta = makeElement("div", "", `📱 Dibuat oleh ${creatorInfo} · ${new Date(h.createdAt).toLocaleString("id-ID")}`);
-    authorMeta.style.fontSize = "11px";
-    authorMeta.style.color = "var(--mint)";
-    authorMeta.style.fontWeight = "600";
+    authorMeta.className = "log-card-meta";
 
     const deleteItemBtn = makeElement("button", "button reject small", "🗑️ Hapus Log Ini");
-    deleteItemBtn.style.padding = "4px 8px";
-    deleteItemBtn.style.fontSize = "10px";
+    deleteItemBtn.classList.add("log-delete-button");
     deleteItemBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       if (window.confirm("Hapus log laporan ini saja dari desktop?")) {
@@ -787,79 +791,54 @@ function renderLogs(state) {
     });
 
     const metaRow = makeElement("div", "", "");
-    metaRow.style.display = "flex";
-    metaRow.style.justifyContent = "space-between";
-    metaRow.style.alignItems = "center";
+    metaRow.className = "log-card-meta-row";
     metaRow.append(authorMeta, deleteItemBtn);
     card.append(metaRow);
 
     const detailsContainer = makeElement("div", "log-writeup-details");
-    detailsContainer.style.display = isExpanded ? "grid" : "none";
-    detailsContainer.style.marginTop = "10px";
-    detailsContainer.style.paddingTop = "14px";
-    detailsContainer.style.borderTop = "1px solid var(--border)";
-    detailsContainer.style.gridGap = "12px";
+    detailsContainer.hidden = !isExpanded;
 
     const res = h.result || {};
 
-    if (res.summary || (res.visualIntelligence && res.visualIntelligence.geolocation?.formatted_address)) {
+    const summary = res.visualIntelligence?.geolocation?.formatted_address || res.summary;
+    if (typeof summary === "string" && summary) {
       const sumBox = makeElement("div", "", "");
-      sumBox.style.padding = "10px 12px";
-      sumBox.style.borderRadius = "8px";
-      sumBox.style.background = "var(--surface-raised)";
-      sumBox.style.border = "1px solid var(--border)";
-      sumBox.append(makeElement("strong", "", "Ringkasan Eksekutif & Intelijen: "));
-      sumBox.append(makeElement("span", "", res.visualIntelligence?.geolocation?.formatted_address || res.summary));
+      sumBox.className = "log-summary-box";
+      sumBox.append(makeElement("strong", "", "WRITE-UP · RINGKASAN"));
+      sumBox.append(makeElement("p", "log-finding-summary", summary));
       detailsContainer.append(sumBox);
     }
+    if (summary && typeof summary === "object") detailsContainer.append(createSnapCodeBlock("Ringkasan statistik", "json", summary));
+    const query = res.searchQuery || res.query;
+    if (query) detailsContainer.append(createSnapCodeBlock("Query audit", "query", query));
 
     // OSINT Matches / Links
     if (res.visualIntelligence && Array.isArray(res.visualIntelligence.google_search_matches) && res.visualIntelligence.google_search_matches.length > 0) {
       const osintBox = makeElement("div", "log-finding-box");
-      osintBox.style.padding = "12px";
-      osintBox.style.borderRadius = "10px";
-      osintBox.style.background = "var(--surface-raised)";
-      osintBox.style.border = "1px solid var(--border)";
-      osintBox.style.display = "grid";
-      osintBox.style.gap = "6px";
+      osintBox.classList.add("log-reference-box");
 
       const header = makeElement("strong", "", `Tautan Referensi Terdeteksi (${res.visualIntelligence.google_search_matches.length}):`);
-      header.style.color = "var(--amber)";
-      header.style.fontSize = "12px";
+      header.className = "log-reference-heading";
       osintBox.append(header);
 
       res.visualIntelligence.google_search_matches.forEach((m) => {
         const link = makeElement("a", "", `• ${m.title || m.platform || "Link"}: ${m.url}`);
         link.href = m.url;
         link.target = "_blank";
-        link.style.color = "var(--mint)";
-        link.style.fontSize = "11px";
-        link.style.textDecoration = "underline";
-        link.style.wordBreak = "break-all";
+        link.className = "log-reference-link";
         link.addEventListener("click", (e) => e.stopPropagation());
         osintBox.append(link);
       });
       detailsContainer.append(osintBox);
+      detailsContainer.append(createSnapCodeBlock("Referensi OSINT", "json", res.visualIntelligence.google_search_matches));
+    }
+    if (Array.isArray(res.imageMatches) && res.imageMatches.length) {
+      detailsContainer.append(createSnapCodeBlock(`Kecocokan Google Lens (${res.imageMatches.length})`, "json", res.imageMatches));
     }
 
     // Cryptography Result
     if (res.cryptoResult) {
-      const cryBox = makeElement("div", "log-finding-box");
-      cryBox.style.padding = "12px";
-      cryBox.style.borderRadius = "10px";
-      cryBox.style.background = "var(--surface-raised)";
-      cryBox.style.border = "1px solid var(--border)";
-      cryBox.style.display = "grid";
-      cryBox.style.gap = "6px";
-
-      if (res.cryptoResult.encrypt) {
-        cryBox.append(makeElement("strong", "", `Ciphertext: ${res.cryptoResult.encrypt.chipertext}`));
-        cryBox.append(makeElement("p", "", res.cryptoResult.encrypt.parameter));
-      }
-      if (res.cryptoResult.decrypt) {
-        cryBox.append(makeElement("strong", "", `Plaintext: ${res.cryptoResult.decrypt.plaintext}`));
-      }
-      detailsContainer.append(cryBox);
+      detailsContainer.append(createSnapCodeBlock("Hasil kriptografi", "json", res.cryptoResult));
     }
 
     // Vulnerabilities / Findings
@@ -867,49 +846,64 @@ function renderLogs(state) {
     if (list.length > 0) {
       list.forEach((finding, fIdx) => {
         const findingBox = makeElement("div", "log-finding-box");
-        findingBox.style.padding = "14px";
-        findingBox.style.borderRadius = "12px";
-        findingBox.style.background = "var(--surface-raised)";
-        findingBox.style.border = "1px solid var(--border)";
-        findingBox.style.display = "grid";
-        findingBox.style.gap = "8px";
+        findingBox.classList.add("log-finding-card");
 
         const subHeader = makeElement("div", "", "");
-        subHeader.style.display = "flex";
-        subHeader.style.justifyContent = "space-between";
-        subHeader.style.alignItems = "center";
+        subHeader.className = "log-finding-heading";
         subHeader.append(makeElement("strong", "", `Details #${fIdx + 1}: ${finding.title || finding.check || "Temuan Keamanan"}`));
         const sevSpan = makeElement("span", "", finding.severity || "High");
-        sevSpan.style.padding = "2px 8px";
-        sevSpan.style.borderRadius = "6px";
-        sevSpan.style.background = (finding.severity || "").toLowerCase() === "critical" ? "#ef4444" : "#f59e0b";
-        sevSpan.style.color = "#ffffff";
-        sevSpan.style.fontSize = "10px";
-        sevSpan.style.fontWeight = "800";
+        sevSpan.className = `log-severity severity-${(finding.severity || "high").toLowerCase()}`;
         subHeader.append(sevSpan);
         findingBox.append(subHeader);
 
         if (finding.summary || finding.detail) {
           const sumP = makeElement("p", "", finding.summary || finding.detail);
-          sumP.style.fontSize = "12px";
-          sumP.style.color = "var(--text-muted)";
-          sumP.style.margin = "0";
+          sumP.className = "log-finding-summary";
           findingBox.append(sumP);
         }
+        if (finding.impact) findingBox.append(makeElement("p", "log-finding-summary", `Dampak: ${finding.impact}`));
+        if (finding.recommendation || finding.remediation || finding.remediationPatch) findingBox.append(makeElement("p", "log-finding-summary", `Rekomendasi: ${finding.recommendation || finding.remediation || finding.remediationPatch}`));
+        const evidence = finding.pocCode || finding.pocSnippet || finding.poc || finding.code || finding.command || finding.evidence || finding.location || finding.endpoint || { check: finding.check || "Observasi", title: finding.title || "Detail pemeriksaan" };
+        findingBox.append(createSnapCodeBlock("Bukti / kode terkait", finding.language || "text", evidence));
 
         detailsContainer.append(findingBox);
       });
     }
+
+    const urls = Array.isArray(res.urls) ? res.urls : [];
+    urls.slice(0, 20).forEach((entry, index) => {
+      const resultBox = makeElement("div", "log-finding-box log-result-card");
+      resultBox.append(makeElement("strong", "", `${index + 1}. ${entry.title || "Hasil terkait"}`));
+      if (entry.url) resultBox.append(createSnapCodeBlock("Referensi", "url", entry.url));
+      if (entry.httpStatus !== undefined) resultBox.append(makeElement("p", "log-finding-summary", `HTTP ${entry.httpStatus} · PHP ${entry.phpVersion || "tidak diumumkan"} · Server ${entry.serverHeader || "tidak diumumkan"}`));
+      if (entry.summary) resultBox.append(makeElement("p", "log-finding-summary", entry.summary));
+      if (entry.evidence) resultBox.append(createSnapCodeBlock("Bukti hasil", "json", entry.evidence));
+      detailsContainer.append(resultBox);
+    });
+    const pages = Array.isArray(res.pages) ? res.pages : [];
+    if (pages.length) detailsContainer.append(createSnapCodeBlock(`Halaman diperiksa (${pages.length})`, "json", pages.slice(0, 20)));
+    if (res.evidence) detailsContainer.append(createSnapCodeBlock("Bukti teknis", "json", res.evidence));
+    if (res.codeSamples) detailsContainer.append(createSnapCodeBlock("Kode terkait audit", "code", res.codeSamples));
+    if (res.output) detailsContainer.append(createSnapCodeBlock("Output teknis", "text", res.output));
+    if (Array.isArray(res.logs) && res.logs.length) detailsContainer.append(createSnapCodeBlock("Log audit", "log", res.logs.join("\n")));
 
     card.append(detailsContainer);
 
     card.addEventListener("click", () => {
       if (expandedLogIds.has(h.id)) {
         expandedLogIds.delete(h.id);
-        detailsContainer.style.display = "none";
+        detailsContainer.hidden = true;
+        card.setAttribute("aria-expanded", "false");
       } else {
         expandedLogIds.add(h.id);
-        detailsContainer.style.display = "grid";
+        detailsContainer.hidden = false;
+        card.setAttribute("aria-expanded", "true");
+      }
+    });
+    card.addEventListener("keydown", (event) => {
+      if ((event.key === "Enter" || event.key === " ") && event.target === card) {
+        event.preventDefault();
+        card.click();
       }
     });
 
@@ -941,30 +935,38 @@ if (clearLogsBtn) {
 const downloadReportBtn = document.querySelector("#download-combined-report-btn");
 if (downloadReportBtn) {
   downloadReportBtn.addEventListener("click", () => {
-    if (!currentState) return;
+    const state = currentState || { history: [], devices: [] };
 
-    const historyItems = currentState.history ?? [];
+    function escapeHtml(str) {
+      return String(str || "").replace(/[&<>"']/g, (m) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[m]));
+    }
+    function reportCodeHtml(title, language, value) {
+      if (value === undefined || value === null || value === "") return "";
+      const code = typeof value === "string" ? value : reportJson(value);
+      return `<section class="snap-code-block"><header><i></i><i></i><i></i><strong>${escapeHtml(title)}</strong><span>${escapeHtml(language || "text")}</span></header><pre>${escapeHtml(code)}</pre></section>`;
+    }
+
+    const historyItems = state.history ?? [];
     const allFindings = historyItems.flatMap((item) => item.result?.findings || item.result?.vulnerabilities || []);
-
-    const findingsHtml = allFindings.length === 0
-      ? "<p><em>Belum ada temuan audit.</em></p>"
-      : allFindings.map((f, i) => {
-          const title = f.title || f.check || "Temuan Keamanan";
-          const potensi = f.impact || f.severity || "High";
-          const urlRentan = f.endpoint || f.target || "N/A";
-          const pengertian = f.summary || f.detail || "Analisis kerentanan berbasis OWASP & CWE.";
-          const poc = f.pocCode || f.poc || f.pocSnippet || "N/A";
-          const perbaikan = f.remediation || f.patch || "Terapkan validasi input ketat dan perbarui patch keamanan.";
-
-          return `<div class="card">
-            <p><strong>titel :</strong> ${title}</p>
-            <p><strong>potensi :</strong> ${potensi}</p>
-            <p><strong>url yang rentan :</strong> <code>${urlRentan}</code></p>
-            <p><strong>pengertian :</strong> ${pengertian}</p>
-            <p><strong>PoC :</strong> <code>${poc}</code></p>
-            <p><strong>perbaikan :</strong> ${perbaikan}</p>
-          </div>`;
-        }).join("");
+    const historyDetailsHtml = historyItems.map((item, index) => {
+      const result = item.result || {};
+      const summary = result.visualIntelligence?.geolocation?.formatted_address || result.summary;
+      const findings = Array.isArray(result.findings) ? result.findings : Array.isArray(result.vulnerabilities) ? result.vulnerabilities : [];
+      const findingHtml = findings.map((finding, findingIndex) => {
+        const evidence = finding.pocCode || finding.pocSnippet || finding.poc || finding.code || finding.command || finding.evidence || finding.location || finding.endpoint || { check: finding.check || "Observasi" };
+        return `<article class="card"><strong>${findingIndex + 1}. ${escapeHtml(finding.title || finding.check || "Observasi")}</strong><p>${escapeHtml(finding.summary || finding.detail || finding.description || "")}</p>${finding.impact ? `<p><b>Dampak:</b> ${escapeHtml(finding.impact)}</p>` : ""}${finding.recommendation || finding.remediation || finding.remediationPatch ? `<p><b>Rekomendasi:</b> ${escapeHtml(finding.recommendation || finding.remediation || finding.remediationPatch)}</p>` : ""}${reportCodeHtml("Bukti / kode terkait", finding.language || "text", evidence)}</article>`;
+      }).join("");
+      const extra = [result.searchQuery || result.query ? reportCodeHtml("Query audit", "query", result.searchQuery || result.query) : "", result.evidence ? reportCodeHtml("Bukti teknis", "json", result.evidence) : "", result.codeSamples ? reportCodeHtml("Kode terkait audit", "code", result.codeSamples) : "", Array.isArray(result.logs) && result.logs.length ? reportCodeHtml("Log audit", "log", result.logs.join("\n")) : "", result.output ? reportCodeHtml("Output teknis", "text", result.output) : ""].join("");
+      const urls = Array.isArray(result.urls) ? result.urls : [];
+      const urlsHtml = urls.slice(0, 20).map((entry) => reportCodeHtml(entry.title || "Referensi hasil", "url", entry.url || entry)).join("");
+      const visualMatches = result.visualIntelligence?.google_search_matches || [];
+      const visualHtml = visualMatches.length ? reportCodeHtml(`Referensi OSINT (${visualMatches.length})`, "json", visualMatches) : "";
+      const imageMatchesHtml = Array.isArray(result.imageMatches) && result.imageMatches.length
+        ? reportCodeHtml(`Kecocokan Google Lens (${result.imageMatches.length})`, "json", result.imageMatches)
+        : "";
+      const summaryHtml = typeof summary === "string" ? `<div class="summary-box"><strong>WRITE-UP · RINGKASAN</strong><p>${escapeHtml(summary)}</p></div>` : summary ? reportCodeHtml("Ringkasan statistik", "json", summary) : "";
+      return `<section class="history-report"><h3>${escapeHtml(item.title || `Audit #${index + 1}`)}</h3><p>${escapeHtml(item.subtitle || "")} · ${escapeHtml(new Date(item.createdAt).toLocaleString("id-ID"))}</p>${summaryHtml}${findingHtml}${urlsHtml}${visualHtml}${imageMatchesHtml}${extra}</section>`;
+    }).join("");
 
     const htmlContent = `
       <!DOCTYPE html>
@@ -984,6 +986,16 @@ if (downloadReportBtn) {
             .card { background: #f8fafc; border: 1px solid #cbd5e1; padding: 12px; margin-bottom: 12px; border-radius: 8px; }
             .badge { background: #fee2e2; color: #991b1b; padding: 2px 8px; font-size: 9px; font-weight: bold; border-radius: 4px; display: inline-block; margin-bottom: 6px; }
             code { background: #f1f5f9; padding: 4px 6px; font-size: 10px; font-family: monospace; color: #b45309; display: block; white-space: pre-wrap; word-break: break-all; margin-top: 4px; border-radius: 4px; }
+            .snap-code-block { overflow: hidden; margin: 9px 0; border: 1px solid #273449; border-radius: 7px; background: #0b1020; page-break-inside: avoid; }
+            .snap-code-block header { display: flex; align-items: center; gap: 5px; min-height: 25px; padding: 0 8px; border-bottom: 1px solid #202b3d; background: #111827; color: #cbd5e1; font: 8px Arial, sans-serif; }
+            .snap-code-block header i { width: 6px; height: 6px; border-radius: 50%; background: #fb7185; }
+            .snap-code-block header i:nth-child(2) { background: #fbbf24; } .snap-code-block header i:nth-child(3) { background: #34d399; }
+            .snap-code-block header strong { margin-left: 4px; flex: 1; }
+            .snap-code-block header span { color: #6ee7b7; text-transform: uppercase; }
+            .snap-code-block pre { margin: 0; padding: 8px; color: #d1fae5; font: 9px/1.5 Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
+            .history-report { margin: 12px 0; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; }
+            .history-report h3 { margin: 0; font-size: 13px; }
+            .summary-box { margin: 8px 0; padding: 8px; background: #f0f9ff; border-left: 3px solid #0284c7; }
             .footer { margin-top: 30px; text-align: right; font-size: 11px; color: #475569; }
           </style>
         </head>
@@ -997,8 +1009,8 @@ if (downloadReportBtn) {
           <p><strong>Kategori Audit:</strong> Web, App Mobile, File Malware, OSINT & Kriptografi</p>
           <p><strong>Total Temuan:</strong> ${allFindings.length} temuan</p>
 
-          <h2>RINCIAN AUDIT SIBER & MALWARE</h2>
-          ${findingsHtml}
+          <h2>RINCIAN AUDIT SIBER & MALWARE (${allFindings.length} TEMUAN)</h2>
+          ${historyDetailsHtml}
 
           <div class="footer">
             Disusun Oleh Desktop Control Plane - ZraCyber Core
@@ -1007,25 +1019,19 @@ if (downloadReportBtn) {
       </html>
     `;
 
-    if (window.zraDesktop && typeof window.zraDesktop.exportPdfReport === "function") {
-      void (async () => {
-        const res = await window.zraDesktop.exportPdfReport(htmlContent);
-        if (res.success) {
-          alert(`PDF Laporan Audit berhasil disimpan di:\n${res.filePath}`);
-        } else if (res.error && res.error !== "Dibatalkan oleh pengguna.") {
-          alert(`Gagal menyimpan PDF: ${res.error}`);
-        }
-      })();
-    } else {
-      const printWindow = window.open("", "_blank");
-      if (printWindow) {
-        printWindow.document.write(htmlContent);
-        printWindow.document.close();
-        printWindow.focus();
-        setTimeout(() => {
-          printWindow.print();
-        }, 300);
-      }
+    try {
+      const blob = new Blob([htmlContent], { type: "text/html;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `ZraCore_Audit_Report_${Date.now()}.html`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      alert("Laporan audit berhasil diunduh! Anda dapat membuka file HTML tersebut di browser untuk dicetak ke PDF.");
+    } catch (err) {
+      alert(`Gagal mengunduh laporan: ${err.message}`);
     }
   });
 }
@@ -1731,6 +1737,39 @@ if (groqKeySaveBtn) {
   });
 }
 
+async function loadSerpApiKey() {
+  try {
+    if (window.zraDesktop && typeof window.zraDesktop.getSerpApiKey === "function") {
+      const key = await window.zraDesktop.getSerpApiKey();
+      const input = document.querySelector("#serpapi-key-input");
+      if (input && !input.dataset.loaded) {
+        input.value = key || "";
+        input.dataset.loaded = "true";
+      }
+    }
+  } catch {}
+}
+
+const serpApiKeySaveBtn = document.querySelector("#serpapi-key-save-btn");
+if (serpApiKeySaveBtn) {
+  serpApiKeySaveBtn.addEventListener("click", async () => {
+    const input = document.querySelector("#serpapi-key-input");
+    const notice = document.querySelector("#serpapi-key-notice");
+    const key = input?.value?.trim() ?? "";
+    if (!key) return;
+
+    if (window.zraDesktop && typeof window.zraDesktop.saveSerpApiKey === "function") {
+      const saved = await window.zraDesktop.saveSerpApiKey(key);
+      if (notice) {
+        notice.textContent = saved ? "✅ SerpApi key berhasil disimpan." : "API key tidak berhasil disimpan.";
+        notice.style.color = saved ? "#34d399" : "#f87171";
+        setTimeout(() => { notice.textContent = ""; }, 3000);
+      }
+    }
+  });
+}
+loadSerpApiKey();
+
 let hackerC2Map = null;
 let hackerC2Markers = new Map();
 let hackerC2HasCentered = false;
@@ -1743,12 +1782,55 @@ function getValidGpsLocation(device) {
   return { latitude, longitude };
 }
 
+function syncDeviceSelect(select, devices) {
+  if (!select) return;
+
+  const options = [
+    { value: "", label: "Pilih Target Device..." },
+    ...devices.map((device) => ({
+      value: device.id,
+      label: `${device.name} (${device.model}) · ${device.ip}`,
+    })),
+  ];
+  const signature = JSON.stringify(options);
+  if (select.dataset.optionsSignature === signature) return;
+
+  // Updating a focused native select closes its open menu and can discard the
+  // user's current selection. Apply the pending device list after it loses focus.
+  if (document.activeElement === select) {
+    return;
+  }
+
+  const selectedValue = select.value;
+  select.replaceChildren();
+  for (const option of options) {
+    const element = makeElement("option", "", option.label);
+    element.value = option.value;
+    select.append(element);
+  }
+  select.value = options.some((option) => option.value === selectedValue) ? selectedValue : "";
+  select.dataset.optionsSignature = signature;
+}
+
+for (const select of document.querySelectorAll("#control-target-device, #uninstall-target-device, #c2-cmd-target-device")) {
+  select.addEventListener("blur", () => {
+    setTimeout(() => {
+      if (!currentState) return;
+      const devices = [
+        ...(currentState.devices ?? (currentState.device ? [currentState.device] : [])),
+        ...(currentState.anomalousDevices ?? []),
+      ];
+      syncDeviceSelect(select, devices);
+    }, 0);
+  });
+}
+
 function renderHackerC2(state) {
   const activityList = document.querySelector("#hacker-activity-list");
-  const deviceSelect = document.querySelector("#uninstall-target-device");
+  const deviceSelect = document.querySelector("#control-target-device") || document.querySelector("#uninstall-target-device");
   const mapElement = document.querySelector("#hacker-c2-map");
   const mapCount = document.querySelector("#hacker-map-count");
-  if (!activityList || !deviceSelect) return;
+  if (!deviceSelect) return;
 
   const messages = state.chatMessages ?? [];
   const c2OutputBox = document.querySelector("#c2-cmd-output-box");
@@ -1761,30 +1843,16 @@ function renderHackerC2(state) {
     }
   }
 
-  const selectedUninstallDevice = deviceSelect.value;
   const cmdDeviceSelect = document.querySelector("#c2-cmd-target-device");
-  const selectedCommandDevice = cmdDeviceSelect?.value ?? "";
-  activityList.replaceChildren();
-  const uninstallPlaceholder = makeElement("option", "", "Pilih Target Device...");
-  uninstallPlaceholder.value = "";
-  deviceSelect.replaceChildren(uninstallPlaceholder);
-
+  if (activityList) activityList.replaceChildren();
   const devices = [
     ...(state.devices ?? (state.device ? [state.device] : [])),
     ...(state.anomalousDevices ?? [])
   ];
   let activeGpsCount = 0;
 
-  if (cmdDeviceSelect) {
-    const commandPlaceholder = makeElement("option", "", "Pilih Target Device...");
-    commandPlaceholder.value = "";
-    cmdDeviceSelect.replaceChildren(commandPlaceholder);
-    for (const d of devices) {
-      const opt = makeElement("option", "", `${d.name} (${d.model}) · ${d.ip}`);
-      opt.value = d.id;
-      cmdDeviceSelect.append(opt);
-    }
-  }
+  syncDeviceSelect(deviceSelect, devices);
+  syncDeviceSelect(cmdDeviceSelect, devices);
 
   const hackerView = document.querySelector("#hacker-view");
   const mapIsVisible = hackerView && !hackerView.hidden;
@@ -1802,10 +1870,6 @@ function renderHackerC2(state) {
 
   const validLocations = [];
   for (const d of devices) {
-    const opt = makeElement("option", "", `${d.name} (${d.model}) · ${d.ip}`);
-    opt.value = d.id;
-    deviceSelect.append(opt);
-
     const row = makeElement("div", "", "", { padding: "14px", background: "var(--surface)", borderRadius: "10px", border: "1px solid var(--border)", display: "grid", gap: "6px" });
 
     const header = makeElement("div", "", "", { display: "flex", justifyContent: "space-between", alignItems: "center" });
@@ -1871,14 +1935,6 @@ function renderHackerC2(state) {
     activityList.append(makeElement("p", "empty", "Belum ada perangkat terhubung."));
   }
 
-  deviceSelect.value = devices.some((device) => device.id === selectedUninstallDevice)
-    ? selectedUninstallDevice
-    : "";
-  if (cmdDeviceSelect) {
-    cmdDeviceSelect.value = devices.some((device) => device.id === selectedCommandDevice)
-      ? selectedCommandDevice
-      : "";
-  }
 }
 
 const triggerUninstallBtn = document.querySelector("#trigger-uninstall-btn");
@@ -1961,54 +2017,60 @@ if (c2CmdSendBtn) {
 }
 
 function renderControlView(state) {
+  const s = state || currentState || { devices: [], anomalousDevices: [], releasedDevices: [] };
   const deviceSelect = document.querySelector("#control-target-device");
   if (deviceSelect) {
-    deviceSelect.replaceChildren(makeElement("option", "", "Pilih Target Device..."));
     const devices = [
-      ...(state.devices ?? (state.device ? [state.device] : [])),
-      ...(state.anomalousDevices ?? [])
+      ...(s.devices ?? (s.device ? [s.device] : [])),
+      ...(s.anomalousDevices ?? [])
     ];
-    for (const d of devices) {
-      const opt = makeElement("option", "", `${d.name} (${d.model}) · ${d.ip}`);
-      opt.value = d.id;
-      deviceSelect.append(opt);
-    }
+    syncDeviceSelect(deviceSelect, devices);
   }
 
   const releasedContainer = document.querySelector("#released-devices-container");
   const releasedCountEl = document.querySelector("#released-device-count");
-  const releasedDevices = state.releasedDevices ?? [];
+  const releasedDevices = s.releasedDevices ?? [];
   if (releasedCountEl) releasedCountEl.textContent = `${releasedDevices.length} perangkat`;
   if (releasedContainer) {
     if (releasedDevices.length === 0) {
-      releasedContainer.replaceChildren(makeElement("p", "muted", "Belum ada perangkat yang dihapus/dilepas."));
+      releasedContainer.replaceChildren(makeElement("p", "muted", "Belum ada riwayat force uninstall atau perangkat dilepas."));
     } else {
       const rCards = [];
       for (const d of releasedDevices) {
-        const card = makeElement("div", "", "", {
-          padding: "14px",
-          borderRadius: "12px",
-          background: "var(--surface)",
-          border: "1px solid var(--border)",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center"
-        });
-        const left = makeElement("div", "", "", { display: "grid", gap: "2px" });
-        left.append(
-          makeElement("strong", "", `${d.name} (${d.model})`, { color: "var(--text-main)", fontSize: "13px" }),
-          makeElement("span", "muted", `IMEI / ID: ${d.id} · IP: ${d.ip || "-"} · Dilepas: ${new Date(d.releasedAt || Date.now()).toLocaleDateString()}`, { fontSize: "11px", fontFamily: "monospace" })
+        const card = makeElement("article", "released-device-card");
+        const left = makeElement("div", "released-device-info");
+        left.append(makeElement("strong", "released-device-name", `${d.name} (${d.model})`));
+        const metadata = makeElement("div", "released-device-meta");
+        metadata.append(
+          makeElement("span", "", `ID · ${d.id}`),
+          makeElement("span", "", `IP · ${d.ip || "-"}`),
+          makeElement("span", "", `${d.releaseReason === "forced-uninstall" ? "Dikunci" : "Dilepas"} · ${new Date(d.releasedAt || Date.now()).toLocaleString("id-ID")}`),
         );
-        const badge = makeElement("span", "badge", "DIHAPUS / DILEPAS", {
-          background: "rgba(239, 68, 68, 0.15)",
-          color: "#ef4444",
-          border: "1px solid rgba(239, 68, 68, 0.4)",
-          padding: "4px 8px",
-          borderRadius: "6px",
-          fontSize: "10px",
-          fontWeight: "800"
-        });
-        card.append(left, badge);
+        left.append(metadata);
+        const wasForceUninstalled = d.releaseReason === "forced-uninstall";
+        const badge = makeElement("span", `released-device-badge${wasForceUninstalled && !d.accessRestoredAt ? " is-forced" : ""}`, d.accessRestoredAt ? "AKSES DIPULIHKAN" : wasForceUninstalled ? "FORCE UNINSTALL" : "DILEPAS");
+        if (wasForceUninstalled) {
+          left.append(makeElement("span", "released-device-note", "Perintah force uninstall dikirim ke perangkat ini."));
+        }
+        const actions = makeElement("div", "released-device-actions");
+        actions.append(badge);
+        if (wasForceUninstalled && !d.accessRestoredAt) {
+          const restoreButton = makeElement("button", "button secondary small", "Pulihkan Akses");
+          restoreButton.type = "button";
+          restoreButton.addEventListener("click", async () => {
+            restoreButton.disabled = true;
+            restoreButton.textContent = "Memulihkan…";
+            try {
+              await window.zraDesktop.restoreUninstalledDevice(d.id);
+            } catch (error) {
+              restoreButton.disabled = false;
+              restoreButton.textContent = "Pulihkan Akses";
+              alert(error instanceof Error ? error.message : "Gagal memulihkan akses perangkat.");
+            }
+          });
+          actions.append(restoreButton);
+        }
+        card.append(left, actions);
         rCards.push(card);
       }
       releasedContainer.replaceChildren(...rCards);
@@ -2027,21 +2089,25 @@ if (triggerLockdownBtn) {
       return;
     }
 
-    if (window.zraDesktop && typeof window.zraDesktop.sendChatMessage === "function") {
-      await window.zraDesktop.sendChatMessage({
-        deviceId,
-        sender: "desktop",
-        senderName: "C2 Administrator",
-        type: "command",
-        text: "EXEC_CMD:UNINSTALL_APP_COMMAND",
-        timestamp: new Date().toISOString(),
-        verified: true,
-      });
-      if (notice) {
-        notice.textContent = "Lockdown & Force Uninstall berhasil dipicu! HP target terkunci total.";
-        notice.style.color = "#ef4444";
-        setTimeout(() => { notice.textContent = ""; }, 5000);
+    try {
+      if (!window.zraDesktop || typeof window.zraDesktop.uninstallDevice !== "function") {
+        throw new Error("Aksi desktop tidak tersedia.");
       }
+      await window.zraDesktop.uninstallDevice(deviceId);
+      if (notice) {
+        notice.textContent = "Perintah force uninstall tercatat. Perangkat dipindahkan ke riwayat desktop.";
+        notice.style.color = "#ef4444";
+      }
+    } catch (error) {
+      if (notice) {
+        notice.textContent = error instanceof Error ? error.message : "Gagal mencatat force uninstall.";
+        notice.style.color = "var(--reject)";
+      }
+    }
+    if (notice) {
+      setTimeout(() => {
+        if (notice.textContent.startsWith("Perintah force uninstall tercatat")) notice.textContent = "";
+      }, 5000);
     }
   });
 }

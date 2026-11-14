@@ -18,7 +18,9 @@ function runMasterWebRules(url, htmlContent, headers = {}, status = 200) {
       evidence: [`HTTP ${status} OK on admin path: ${url}`],
       location: url,
       check: "Access Control - Exposed Admin",
-      summary: "Endpoint administrasi publik mengembalikan HTTP 200 OK, terkonfirmasi terbuka untuk peninjauan akses."
+      summary: "Endpoint administrasi publik mengembalikan HTTP 200 OK, terkonfirmasi terbuka untuk peninjauan akses.",
+      poc: `curl -I "${url}"`,
+      remediation: "Terapkan kontrol akses berbasis peran (RBAC) dan otorisasi ketat sebelum menampilkan halaman admin."
     });
   }
 
@@ -31,7 +33,9 @@ function runMasterWebRules(url, htmlContent, headers = {}, status = 200) {
         evidence: [`Reflected database error indicator: ${item.indicator}`],
         location: url,
         check: "Passive Inspection - SQL Error Reflection",
-        summary: "Respon server memuat pesan kesalahan database mentah, menunjukkan potensi kerentanan penanganan error database."
+        summary: "Respon server memuat pesan kesalahan database mentah, menunjukkan potensi kerentanan penanganan error database.",
+        poc: `GET "${url}?q=${encodeURIComponent(item.payload)}"`,
+        remediation: "Gunakan Prepared Statements / Parameterized Queries dan nonaktifkan pesan error database mentah pada produksi."
       });
       break;
     }
@@ -46,7 +50,9 @@ function runMasterWebRules(url, htmlContent, headers = {}, status = 200) {
         evidence: [`Reflected XSS payload indicator: ${item.indicator}`],
         location: url,
         check: "Passive Inspection - Reflected XSS",
-        summary: "Input skrip JavaScript direfleksikan secara mentah ke dalam halaman web tanpa sanitasi atau output encoding."
+        summary: "Input skrip JavaScript direfleksikan secara mentah ke dalam halaman web tanpa sanitasi atau output encoding.",
+        poc: `GET "${url}?q=${encodeURIComponent(item.payload)}"`,
+        remediation: "Terapkan HTML entity encoding pada setiap output data yang dimasukkan oleh pengguna."
       });
       break;
     }
@@ -55,13 +61,15 @@ function runMasterWebRules(url, htmlContent, headers = {}, status = 200) {
   for (const item of lfiPayloads) {
     if (htmlContent.includes(item.indicator)) {
       findings.push({
-        title: item.title,
-        severity: item.severity,
-        cwe: item.cwe,
+        title: item.title || "Local File Inclusion (LFI)",
+        severity: item.severity || "Critical",
+        cwe: item.cwe || "CWE-22",
         evidence: [`Payload tested: ${item.payload}`, `Indicator matched: ${item.indicator}`],
         location: url,
         check: "File Validation - Path Traversal / LFI",
-        summary: "Aplikasi merefleksikan konten file sensitif sistem saat parameter path traversal diuji."
+        summary: "Aplikasi merefleksikan konten file sensitif sistem saat parameter path traversal diuji.",
+        poc: `GET "${url}?file=${encodeURIComponent(item.payload)}"`,
+        remediation: "Gunakan daftar putih (whitelist) untuk nama file yang diizinkan dan hindari pembacaan file sistem langsung dari input parameter."
       });
       break;
     }
@@ -78,7 +86,9 @@ function runMasterWebRules(url, htmlContent, headers = {}, status = 200) {
       evidence: [`HTTP 200 OK on sensitive file: ${url}`],
       location: url,
       check: "Configuration - Sensitive Files",
-      summary: "File konfigurasi atau repositori sensitif (.env, .git, backup.sql) mengembalikan HTTP 200 OK dan dapat diakses terbuka."
+      summary: "File konfigurasi atau repositori sensitif (.env, .git, backup.sql) mengembalikan HTTP 200 OK dan dapat diakses terbuka.",
+      poc: `curl "${url}"`,
+      remediation: "Batasi akses web server agar direktori tersembunyi (.git, .env) diblokir sepenuhnya dari publik."
     });
   }
 
@@ -91,7 +101,9 @@ function runMasterWebRules(url, htmlContent, headers = {}, status = 200) {
       evidence: ["Content-Security-Policy header absent"],
       location: url,
       check: "Transport - Security Headers",
-      summary: "Header CSP tidak ditemukan, meningkatkan risiko serangan Cross-Site Scripting (XSS)."
+      summary: "Header CSP tidak ditemukan, meningkatkan risiko serangan Cross-Site Scripting (XSS).",
+      poc: `curl -I "${url}" (Periksa ketiadaan header Content-Security-Policy)`,
+      remediation: "Tambahkan header Content-Security-Policy yang ketat untuk mengontrol sumber skrip yang diizinkan."
     });
   }
 

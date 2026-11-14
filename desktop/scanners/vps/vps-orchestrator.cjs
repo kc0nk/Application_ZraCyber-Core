@@ -9,12 +9,16 @@ const { calculateRisk } = require("../../core/risk-engine.cjs");
 
 async function runVpsOrchestrator(body, apiKey) {
   const target = validateVpsTarget({ targetIp: body.targetIp, port: body.port });
-  const scanMode = body.scanMode === "internal" ? "internal" : "external";
+  const scanMode = body.scanMode === "internal" || body.scanMode === "authenticated" ? "internal" : "external";
 
   let scanResult;
   let findings = [];
   if (scanMode === "internal") {
-    scanResult = await runInternalScan(target, { sshUser: body.sshUser, sshPassword: body.sshPassword });
+    scanResult = await runInternalScan(target, {
+      sshUser: body.sshUser,
+      sshPassword: body.sshPassword,
+      expectedHostFingerprint: body.expectedHostFingerprint,
+    });
     const sshF = applySshRules(scanResult);
     const linF = applyLinuxRules(scanResult);
     const coreF = applySecurityRules(scanResult.evidence);
@@ -33,6 +37,9 @@ async function runVpsOrchestrator(body, apiKey) {
     scanType: scanMode === "internal" ? "vps-internal-authenticated-audit" : "vps-external-attack-surface",
     summary: `Inspeksi VPS (${scanMode === "internal" ? "Dengan Login" : "Tanpa Login"}) berhasil diselesaikan untuk target ${target.ip}:${target.port}.`,
     limitations: "Inspeksi dilakukan melalui discovery jaringan riil dan interpretasi rule engine.",
+    authenticated: scanMode === "internal" ? Boolean(scanResult.authenticated) : false,
+    ...(scanMode === "internal" ? { user: scanResult.user, hostFingerprint: scanResult.hostFingerprint } : {}),
+    evidence: scanResult.evidence,
     stats: riskResult.stats,
     vulnerabilities: findings,
     logs: [

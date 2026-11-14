@@ -5,9 +5,10 @@ import { useState } from "react";
 import { Platform, Pressable, ScrollView, Text, View } from "react-native";
 
 import { BrandHeader, Field, Panel, PrimaryButton, ScreenShell, SectionHeading, StatusPill, useZraTheme } from "@/components/zra-ui";
-import { MarkdownRenderer } from "@/components/markdown-renderer";
+import { AuditWriteup } from "@/components/audit-writeup";
 import { AuditHistoryList, filterAuditHistory } from "@/components/audit-history";
 import { useAppState } from "@/lib/app-state";
+import { useProgressiveReport } from "@/hooks/use-progressive-report";
 
 function safeTargetLabel(rawUrl: string) {
   try {
@@ -32,7 +33,7 @@ export default function ToolsWebsiteScreen() {
   const [loginUser, setLoginUser] = useState("");
   const [loginPass, setLoginPass] = useState("");
   const [busy, setBusy] = useState(false);
-  const [reportData, setReportData] = useState<any | null>(null);
+  const { report: reportData, revealReport, clearReport } = useProgressiveReport();
   const [feedback, setFeedback] = useState("");
   const [scanProgress, setScanProgress] = useState<number | null>(null);
   const [scanPhase, setScanPhase] = useState("");
@@ -53,91 +54,9 @@ export default function ToolsWebsiteScreen() {
   };
 
   // Pakai renderer yang sama untuk hasil terbaru dan laporan yang dibuka dari riwayat.
-  const renderAuditReport = (report: any, emptyMessage: string) => {
-    if (!report) {
-      return <Text style={{ color: ZRA.muted, fontSize: 11, fontStyle: "italic", textAlign: "center", paddingVertical: 12 }}>{emptyMessage}</Text>;
-    }
-
-    const stats = report.stats || { critical: 0, high: 0, medium: 0, low: 0, info: 0 };
-    return (
-      <View style={{ gap: 12 }}>
-        {report.scanType ? <Text style={{ color: ZRA.muted, fontSize: 9 }}>Jenis audit: {report.scanType}</Text> : null}
-        {report.authentication ? (
-          <View style={{ padding: 10, borderRadius: 9, backgroundColor: ZRA.surface, borderWidth: 1, borderColor: ZRA.border, gap: 4 }}>
-            <Text style={{ color: ZRA.text, fontSize: 11, fontWeight: "800" }}>
-              Status akses: {report.authentication.status === "authenticated" ? "Login terverifikasi" : "Tanpa login"}
-            </Text>
-            {report.authentication.loginPagePath ? <Text selectable style={{ color: ZRA.muted, fontSize: 9 }}>Halaman login: {report.authentication.loginPagePath}</Text> : null}
-            <Text style={{ color: ZRA.muted, fontSize: 9 }}>Kredensial dan cookie sesi tidak disertakan pada laporan.</Text>
-          </View>
-        ) : null}
-        {report.summary ? <MarkdownRenderer content={report.summary} textColor={ZRA.muted} codeColor={ZRA.mint} fontSize={12} /> : null}
-        {report.limitations ? <Text style={{ color: ZRA.muted, fontSize: 10, lineHeight: 15 }}>{report.limitations}</Text> : null}
-
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
-          {([
-            ["Critical", stats.critical, ZRA.red],
-            ["High", stats.high, ZRA.amber],
-            ["Medium", stats.medium, ZRA.amber],
-            ["Low", stats.low, ZRA.mint],
-            ["Info", stats.info, ZRA.blue],
-          ] as const).map(([label, count, color]) => (
-            <View key={label} style={{ flexGrow: 1, minWidth: 56, padding: 8, borderRadius: 9, borderWidth: 1, borderColor: color, alignItems: "center", backgroundColor: ZRA.surface }}>
-              <Text style={{ color, fontSize: 15, fontWeight: "900" }}>{count || 0}</Text>
-              <Text style={{ color: ZRA.muted, fontSize: 8, fontWeight: "800", textTransform: "uppercase" }}>{label}</Text>
-            </View>
-          ))}
-        </View>
-
-        {Array.isArray(report.pages) && report.pages.length > 0 ? (
-          <View style={{ gap: 7 }}>
-            <Text style={{ color: ZRA.text, fontSize: 11, fontWeight: "900" }}>HALAMAN YANG DIPERIKSA</Text>
-            {report.pages.map((page: any, index: number) => (
-              <View key={`${page.url || "page"}-${index}`} style={{ padding: 9, borderRadius: 8, backgroundColor: ZRA.surface, borderWidth: 1, borderColor: ZRA.border, gap: 3 }}>
-                <Text selectable style={{ color: ZRA.mint, fontSize: 10, fontWeight: "700" }}>{page.title || page.url || `Halaman ${index + 1}`}</Text>
-                {page.title && page.url ? <Text selectable style={{ color: ZRA.muted, fontSize: 9 }}>{page.url}</Text> : null}
-                <Text style={{ color: ZRA.muted, fontSize: 9 }}>HTTP {page.status ?? "-"} · {page.links ?? 0} tautan · {page.forms ?? 0} form</Text>
-                {page.responseHeaders && Object.keys(page.responseHeaders).length > 0 ? (
-                  <View style={{ marginTop: 3, gap: 2 }}>
-                    {Object.entries(page.responseHeaders).map(([name, value]) => (
-                      <Text key={name} selectable style={{ color: ZRA.muted, fontSize: 8 }}>{name}: {String(value)}</Text>
-                    ))}
-                  </View>
-                ) : null}
-              </View>
-            ))}
-          </View>
-        ) : null}
-
-        {Array.isArray(report.logs) && report.logs.length > 0 ? (
-          <View style={{ padding: 10, borderRadius: 8, backgroundColor: "#060a0f", gap: 4 }}>
-            <Text style={{ color: ZRA.mint, fontSize: 9, fontWeight: "900" }}>LOG AUDIT</Text>
-            {report.logs.map((line: string, index: number) => <Text key={`${index}-${line}`} selectable style={{ color: "#34d399", fontSize: 9, lineHeight: 14, fontFamily: Platform.OS === "ios" ? "Courier" : "monospace" }}>{line}</Text>)}
-          </View>
-        ) : null}
-
-        {Array.isArray(report.vulnerabilities) && report.vulnerabilities.length > 0 ? (
-          <View style={{ gap: 8 }}>
-            <Text style={{ color: ZRA.text, fontSize: 11, fontWeight: "900" }}>TEMUAN / OBSERVASI</Text>
-            {report.vulnerabilities.map((item: any, index: number) => (
-              <View key={`${item.title || item.check || "finding"}-${index}`} style={{ padding: 12, borderRadius: 10, backgroundColor: ZRA.surface, borderWidth: 1, borderColor: ZRA.border, gap: 8 }}>
-                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-                  <Text style={{ color: ZRA.text, fontSize: 13, fontWeight: "800", flex: 1 }}>{index + 1}. {item.title || item.check || "Observasi"}</Text>
-                  <StatusPill label={(item.severity || "info").toUpperCase()} tone={item.severity === "critical" || item.severity === "high" ? "red" : "amber"} />
-                </View>
-                {item.check ? <Text style={{ color: ZRA.muted, fontSize: 10 }}>Pemeriksaan: {item.check}</Text> : null}
-                {item.endpoint ? <Text selectable style={{ color: ZRA.mint, fontSize: 10, fontFamily: Platform.OS === "ios" ? "Courier" : "monospace" }}>{item.endpoint}</Text> : null}
-                <MarkdownRenderer content={item.summary || item.detail || "Tidak ada uraian tambahan."} textColor={ZRA.muted} codeColor={ZRA.mint} fontSize={11} />
-                {item.pocCode || item.poc ? <Text selectable style={{ color: ZRA.amber, fontSize: 10, fontFamily: Platform.OS === "ios" ? "Courier" : "monospace" }}>PoC: {item.pocCode || item.poc}</Text> : null}
-              </View>
-            ))}
-          </View>
-        ) : (
-          <Text style={{ color: ZRA.muted, fontSize: 11, fontStyle: "italic", textAlign: "center", paddingVertical: 8 }}>Tidak ada temuan pada laporan ini.</Text>
-        )}
-      </View>
-    );
-  };
+  const renderAuditReport = (report: any, emptyMessage: string) => (
+    <AuditWriteup report={report} emptyMessage={emptyMessage} showStats={false} />
+  );
 
   // Kirim URL lab dan, bila dipilih, kredensial sementara untuk sesi audit terbatas.
   const handleRunAiPentest = async () => {
@@ -152,7 +71,7 @@ export default function ToolsWebsiteScreen() {
     }
 
     setBusy(true);
-    setReportData(null);
+    clearReport();
     if (accessMode === "login" && (!loginUser.trim() || !loginPass)) {
       setFeedback("Masukkan username dan password akun lab untuk mode login.");
       setBusy(false);
@@ -208,20 +127,31 @@ export default function ToolsWebsiteScreen() {
       }
 
       const data = await response.json();
-      setReportData(data);
       setTerminalLogs(Array.isArray(data.logs) ? data.logs : ["[DONE] Audit selesai; log server tidak tersedia."]);
-      setScanProgress(100);
-      setScanPhase("Audit pasif selesai.");
-      setFeedback(`Audit lab selesai. ${data.stats?.total || 0} observasi ditemukan.`);
+      setScanProgress(data.scanStatus === "unreachable" ? 100 : 90);
+      setScanPhase(data.scanStatus === "unreachable" ? "Target tidak terjangkau." : "Menampilkan temuan satu per satu...");
+      setFeedback(data.scanStatus === "unreachable"
+        ? `${data.summary} Periksa skema (http/https), port, dan apakah server target sedang berjalan.`
+        : `Audit lab selesai. ${data.stats?.total || 0} observasi ditemukan.`);
 
       addHistory({
         kind: "SCAN",
         title: `Website Pentest: ${safeTarget}`,
-        subtitle: `${data.stats?.total || 0} observasi tercatat`,
-        status: "completed",
+        subtitle: data.scanStatus === "unreachable" ? "Target tidak terjangkau; audit tidak dilakukan" : `${data.stats?.total || 0} observasi tercatat`,
+        status: data.scanStatus === "unreachable" ? "failed" : "completed",
         payload: { action: "ai_pentest_audit", target: safeTarget },
         result: data,
       });
+      if (data.scanStatus === "unreachable") {
+        clearReport();
+      } else {
+        await revealReport(data, (finding) => {
+          const title = String(finding.title || finding.check || "Temuan terkonfirmasi");
+          setTerminalLogs((current) => [...current, `[SUCCESS] ${title}`]);
+        });
+        setScanProgress(100);
+        setScanPhase("Audit website selesai.");
+      }
     } catch (err: any) {
       const message = err?.message || "Terjadi kesalahan yang tidak diketahui.";
       setFeedback(`Gagal menjalankan audit: ${message}`);

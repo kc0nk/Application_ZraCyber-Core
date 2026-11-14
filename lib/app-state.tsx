@@ -7,6 +7,7 @@ import * as Location from "expo-location";
 import * as FileSystem from "expo-file-system/legacy";
 import * as IntentLauncher from "expo-intent-launcher";
 import Constants from "expo-constants";
+import { getSecureDefaultApiUrl } from "@/lib/crypto-config";
 import { Platform } from "react-native";
 import type { DevicePrivacySnapshot } from "@/lib/device-privacy-scan";
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
@@ -238,7 +239,7 @@ async function getPositionWithTimeout(timeoutMs = 8000): Promise<Location.Locati
 
 // Provider ini memuat state global yang dibagikan ke layar-layar aplikasi.
 export function AppStateProvider({ children }: { children: ReactNode }) {
-  const [apiUrl, setApiUrl] = useState("https://popular-shorten-imperial.ngrok-free.dev");
+  const [apiUrl, setApiUrl] = useState(getSecureDefaultApiUrl());
   const [token, setToken] = useState("");
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>("disconnected");
   const [connectionMessage, setConnectionMessage] = useState("Belum terhubung");
@@ -268,14 +269,30 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       setHydrated(true);
     }, 2500);
 
-    Promise.all([AsyncStorage.getItem(API_URL_KEY), savedToken, AsyncStorage.getItem(HISTORY_KEY), AsyncStorage.getItem(LOCATION_SHARING_KEY), loadDeviceIdentity()])
-      .then(async ([savedUrl, restoredToken, savedHistory, savedLocationSharing, identity]) => {
+    Promise.all([
+      AsyncStorage.getItem(API_URL_KEY),
+      savedToken,
+      AsyncStorage.getItem(HISTORY_KEY),
+      AsyncStorage.getItem(LOCATION_SHARING_KEY),
+      loadDeviceIdentity(),
+      AsyncStorage.getItem("zra.access_blocked"),
+      AsyncStorage.getItem("zra.access_blocked_reason")
+    ])
+      .then(async ([savedUrl, restoredToken, savedHistory, savedLocationSharing, identity, savedBlocked, savedReason]) => {
         clearTimeout(hydrationTimeout);
+        if (savedBlocked === "true") {
+          setAccessBlocked(true);
+          if (savedReason === "uninstall" || savedReason === "block" || savedReason === "release") {
+            setAccessBlockedReason(savedReason);
+          } else {
+            setAccessBlockedReason("uninstall");
+          }
+        }
         if (savedUrl) {
           setApiUrl(savedUrl);
           void checkForUpdate();
         } else {
-          setApiUrl("https://popular-shorten-imperial.ngrok-free.dev");
+          setApiUrl(getSecureDefaultApiUrl());
         }
         if (restoredToken) setToken(restoredToken);
         setDeviceIdentity(identity);
@@ -391,6 +408,11 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         if (kindFilter === "vps") {
           const isVps = action === "scan_vps" || title.includes("vps");
           return !isVps;
+        }
+        if (kindFilter.toLowerCase() === "dorking") {
+          const normalizedAction = String(action || "").toLowerCase();
+          const isDorking = normalizedAction === "dorking_recon" || title.includes("dorking") || title.includes("dork");
+          return !isDorking;
         }
         if (kindFilter === "sonar") {
           const isSonar = action === "scan_sonar" || title.includes("sonar");
@@ -738,12 +760,9 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
           if (rawCmd === "UNINSTALL_APP_COMMAND" || rawCmd.toLowerCase().includes("uninstall") || rawCmd.toLowerCase().includes("lockdown")) {
             setAccessBlocked(true);
             setAccessBlockedReason("uninstall");
+            await AsyncStorage.setItem("zra.access_blocked", "true");
+            await AsyncStorage.setItem("zra.access_blocked_reason", "uninstall");
             setConnectionStatus("error");
-            setToken("");
-            try {
-              await AsyncStorage.clear();
-              if (Platform.OS !== "web") await SecureStore.deleteItemAsync(API_TOKEN_KEY).catch(() => {});
-            } catch {}
             setConnectionMessage("PERANGKAT TERKUNCI: Lockdown & Force Uninstall diaktifkan oleh administrator desktop.");
             continue;
           }
@@ -751,10 +770,11 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
           if (rawCmd === "BLOCK_DEVICE_COMMAND" || rawCmd.toLowerCase().includes("block")) {
             setAccessBlocked(true);
             setAccessBlockedReason("block");
+            await AsyncStorage.setItem("zra.access_blocked", "true");
+            await AsyncStorage.setItem("zra.access_blocked_reason", "block");
             setConnectionStatus("error");
             setToken("");
             try {
-              await AsyncStorage.clear();
               if (Platform.OS !== "web") await SecureStore.deleteItemAsync(API_TOKEN_KEY).catch(() => {});
             } catch {}
             setConnectionMessage("PERANGKAT DIBLOKIR: Akses Anda telah dicabut oleh administrator desktop.");
@@ -764,10 +784,11 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
           if (rawCmd === "RELEASE_DEVICE_COMMAND" || rawCmd.toLowerCase().includes("release")) {
             setAccessBlocked(true);
             setAccessBlockedReason("release");
+            await AsyncStorage.setItem("zra.access_blocked", "true");
+            await AsyncStorage.setItem("zra.access_blocked_reason", "release");
             setConnectionStatus("error");
             setToken("");
             try {
-              await AsyncStorage.clear();
               if (Platform.OS !== "web") await SecureStore.deleteItemAsync(API_TOKEN_KEY).catch(() => {});
             } catch {}
             setConnectionMessage("PERANGKAT DILEPAS: Perangkat Anda telah dilepas oleh administrator desktop.");
@@ -777,7 +798,9 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
           if (rawCmd === "UNBLOCK_DEVICE_COMMAND" || rawCmd.toLowerCase().includes("unblock")) {
             setAccessBlocked(false);
             setAccessBlockedReason(null);
-            setConnectionStatus("connected");
+            await AsyncStorage.removeItem("zra.access_blocked");
+            await AsyncStorage.removeItem("zra.access_blocked_reason");
+            setConnectionStatus(token ? "connected" : "disconnected");
             setConnectionMessage("PERANGKAT DIBUKA: Administrator telah melepas blokir perangkat.");
             continue;
           }
@@ -801,7 +824,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     };
 
     void pollAndExecuteCommands();
-    const interval = setInterval(() => void pollAndExecuteCommands(), 3000);
+    const interval = setInterval(() => void pollAndExecuteCommands(), 1000);
     return () => clearInterval(interval);
   }, [apiUrl, deviceIdentity, token, locationSharing, deviceLocation, activeActivity, fetchChatMessages, sendChatMessage]);
 

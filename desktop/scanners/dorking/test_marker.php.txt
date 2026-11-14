@@ -1,0 +1,2 @@
+ZRACORE_LAB_SAFE_TEST_MARKER_PHP_TXT_2026
+Purpose: Safe non-executable test marker for double-extension file upload testing.

@@ -83,33 +83,54 @@ function RoutedContent() {
     return () => subscription.remove();
   }, [checkPermission]);
 
-  if (locationGranted !== true) {
-    return (
-      <SafeAreaView style={{ flex: 1, justifyContent: "center", padding: 24, backgroundColor: ZRA.background }}>
-        <View style={{ padding: 24, borderWidth: 1, borderColor: ZRA.border, borderRadius: 24, backgroundColor: ZRA.surface }}>
-          <View style={{ width: 56, height: 56, borderRadius: 16, backgroundColor: ZRA.mintDim, alignItems: "center", justifyContent: "center", marginBottom: 20 }}>
-            <Ionicons name="shield-checkmark-outline" size={32} color={ZRA.mint} />
-          </View>
-          <Text style={{ fontSize: 13, fontWeight: "800", color: ZRA.mint, marginBottom: 8, letterSpacing: 1.1 }}>IZIN LOKASI DIPERLUKAN</Text>
-          <Text style={{ fontSize: 22, fontWeight: "900", color: ZRA.text, marginBottom: 12 }}>Izinkan Lokasi</Text>
-          <Text style={{ fontSize: 13, color: ZRA.muted, marginBottom: 20, lineHeight: 18 }}>Izin lokasi diperlukan untuk fitur koordinat perangkat.</Text>
-          
-          <View style={{ backgroundColor: ZRA.surfaceRaised, padding: 14, borderRadius: 12, gap: 8, marginBottom: 20, borderWidth: 1, borderColor: ZRA.border }}>
-            <View style={{ flexDirection: "row", alignItems: "center" }}>
-              <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: locationGranted ? ZRA.mint : ZRA.red, marginRight: 10 }} />
-              <Text style={{ color: ZRA.text, fontSize: 12, fontWeight: "700" }}>{locationGranted ? "Lokasi GPS Diizinkan" : "Lokasi GPS belum diizinkan / dimatikan"}</Text>
-            </View>
-          </View>
+  if (accessBlocked) {
+    const reason = accessBlockedReason || "block";
 
-          <Pressable onPress={() => void requestPermission()} style={{ height: 48, backgroundColor: ZRA.button, borderRadius: 12, alignItems: "center", justifyContent: "center", marginBottom: 10 }}>
-            <Text style={{ color: ZRA.buttonText, fontWeight: "800", fontSize: 14 }}>Minta izin lokasi</Text>
+    if (reason === "release") {
+      return (
+        <SafeAreaView style={{ flex: 1, justifyContent: "center", padding: 28, backgroundColor: "#0b1016" }}>
+          <View style={{ gap: 14, padding: 22, borderWidth: 1, borderColor: "#3b82f6", borderRadius: 20, backgroundColor: "#15191e" }}>
+            <Text style={{ color: "#93c5fd", fontSize: 11, fontWeight: "800", letterSpacing: 1.3 }}>PERANGKAT DILEPAS</Text>
+            <Text style={{ color: "#f3f7fa", fontSize: 24, fontWeight: "800" }}>Sesi diakhiri.</Text>
+            <Text style={{ color: "#91a0ad", fontSize: 14, lineHeight: 21 }}>Perangkat Anda telah dilepas dari daftar terdaftar oleh administrator desktop. Silakan hubungkan kembali dengan API key baru jika diperlukan.</Text>
+            <Pressable onPress={() => void retryAccessCheck()} style={{ minHeight: 46, alignItems: "center", justifyContent: "center", borderRadius: 12, backgroundColor: "#93c5fd" }}>
+              <Text style={{ color: "#0b1016", fontWeight: "800" }}>Mengerti & Lanjutkan</Text>
+            </Pressable>
+          </View>
+        </SafeAreaView>
+      );
+    }
+
+    if (reason === "uninstall") {
+      return (
+        <SafeAreaView style={{ flex: 1, justifyContent: "center", padding: 28, backgroundColor: "#0b1016" }}>
+          <View style={{ gap: 14, padding: 22, borderWidth: 1, borderColor: "#ef4444", borderRadius: 20, backgroundColor: "#15191e" }}>
+            <Text style={{ color: "#fca5a5", fontSize: 11, fontWeight: "800", letterSpacing: 1.3 }}>FORCE UNINSTALL & WIPE PERMANEN</Text>
+            <Text style={{ color: "#f3f7fa", fontSize: 24, fontWeight: "800" }}>Perangkat Terkunci Total.</Text>
+            <Text style={{ color: "#91a0ad", fontSize: 14, lineHeight: 21 }}>Administrator desktop telah memerintahkan pencopotan paksa dan penghapusan data (Force Uninstall / C2 Lockdown). Akses perangkat ini diblokir secara permanen.</Text>
+            <Pressable onPress={() => Alert.alert("Akses Ditolak", "Perangkat ini telah dikunci secara permanen oleh C2 Administrator.")} style={{ minHeight: 46, alignItems: "center", justifyContent: "center", borderRadius: 12, backgroundColor: "#ef4444" }}>
+              <Text style={{ color: "#f3f7fa", fontWeight: "800" }}>Perangkat Terkunci Permanen</Text>
+            </Pressable>
+          </View>
+        </SafeAreaView>
+      );
+    }
+
+    return (
+      <SafeAreaView style={{ flex: 1, justifyContent: "center", padding: 28, backgroundColor: "#0b1016" }}>
+        <View style={{ gap: 14, padding: 22, borderWidth: 1, borderColor: "#694141", borderRadius: 20, backgroundColor: "#15191e" }}>
+          <Text style={{ color: "#ff9c9c", fontSize: 11, fontWeight: "800", letterSpacing: 1.3 }}>AKSES DIBLOKIR</Text>
+          <Text style={{ color: "#f3f7fa", fontSize: 24, fontWeight: "800" }}>Aplikasi terkunci.</Text>
+          <Text style={{ color: "#91a0ad", fontSize: 14, lineHeight: 21 }}>Administrator desktop menonaktifkan/memblokir akses device ini. Hubungi administrator untuk membuka blokir.</Text>
+          <Pressable onPress={() => void retryAccessCheck()} style={{ minHeight: 46, alignItems: "center", justifyContent: "center", borderRadius: 12, backgroundColor: "#a3f7c5" }}>
+            <Text style={{ color: "#0b1016", fontWeight: "800" }}>Cek akses lagi</Text>
           </Pressable>
         </View>
       </SafeAreaView>
     );
   }
 
-  if (accessBlocked) {
+  if (locationGranted !== true) {
     const reason = accessBlockedReason || "block";
 
     if (reason === "release") {

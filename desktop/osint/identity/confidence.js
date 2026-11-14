@@ -1,7 +1,6 @@
 function calculateConfidence(graph, correlation) {
   let score = 0;
   if (graph.entity.username) score += 2;
-  if (graph.entity.email) score += 3;
   if (correlation.signalsCount >= 2) score += 2;
 
   let level = "LOW";

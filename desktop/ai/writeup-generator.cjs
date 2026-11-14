@@ -1,4 +1,11 @@
-function generateWriteupReport(target, dns, urlGraph, findings, stats) {
+function generateWriteupReport(target, dns, urlGraph, findings, stats, crawledPages = []) {
+  const pages = (Array.isArray(crawledPages) ? crawledPages : []).map((page) => ({
+    url: page.url,
+    status: page.status,
+    reachable: Boolean(page.reachable),
+    formCount: Array.isArray(page.forms) ? page.forms.length : 0,
+  }));
+
   return {
     success: true,
     scanType: "modular-website-penetration-testing",
@@ -7,6 +14,8 @@ function generateWriteupReport(target, dns, urlGraph, findings, stats) {
     target: target.url,
     dnsRecon: dns,
     urlGraph,
+    pages,
+    pageCount: pages.filter((page) => page.reachable).length,
     stats,
     vulnerabilities: findings,
     logs: [

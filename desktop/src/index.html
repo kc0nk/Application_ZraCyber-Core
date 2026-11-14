@@ -100,6 +100,18 @@
             </div>
             <p id="api-key-notice" class="notice" role="status"></p>
           </div>
+
+          <div class="api-key-section">
+            <div>
+              <p class="eyebrow">BING SEARCH · SERPAPI</p>
+              <h4>SerpApi key</h4>
+              <p class="muted">Key disimpan di Desktop dan dipakai untuk pencarian pasif Dorking. Jangan masukkan API key mobile di sini.</p>
+            </div>
+            <label for="serpapi-key-input">SerpApi API key</label>
+            <input id="serpapi-key-input" type="password" autocomplete="off" spellcheck="false" placeholder="Tempel SerpApi key" />
+            <button id="serpapi-key-save-btn" class="button secondary" type="button">Simpan SerpApi key</button>
+            <p id="serpapi-key-notice" class="notice" role="status"></p>
+          </div>
         </article>
       </section>
       </div>
@@ -178,15 +190,15 @@
           <div><p class="eyebrow">05 / MULTI-DEVICE AUDIT LOGS &amp; REPORTS</p><h2>Laporan</h2></div>
           <span class="device-limit">Sinkronisasi Multi-HP (HP A, HP B, dll.)</span>
         </div>
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px; margin-bottom: 14px; gap: 10px;">
-          <p class="muted" style="margin: 0;">Pantau hasil audit (Web, App, File, OSINT) dari semua HP yang terhubung dan unduh laporannya.</p>
-          <div style="display: flex; gap: 8px;">
+        <div class="log-toolbar">
+          <p class="muted">Pantau hasil audit Web, App, File, dan OSINT dari semua perangkat yang terhubung.</p>
+          <div class="log-actions">
             <button id="clear-system-logs-btn" class="button secondary" type="button">Bersihkan Log</button>
             <button id="download-combined-report-btn" class="button primary" type="button">Unduh Laporan Gabungan (PDF)</button>
           </div>
         </div>
-        <div style="background: var(--surface-raised); border: 1px solid var(--border-card); border-radius: 16px; padding: 18px; height: 440px; overflow-y: auto;">
-          <div id="system-logs-container" style="display: grid; gap: 10px;"></div>
+        <div class="log-list-panel">
+          <div id="system-logs-container" class="log-list"></div>
         </div>
       </section>
 
@@ -215,8 +227,8 @@
           <article class="card" style="padding: 20px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
               <div>
-                <h3 style="margin: 0; color: var(--text-main); font-size: 15px;">Daftar Akun / Perangkat yang Dihapus (*Released Devices*)</h3>
-                <p class="muted" style="margin: 4px 0 0; font-size: 11px;">Riwayat perangkat seluler yang sebelumnya terdaftar atau anomali, namun telah dilepas (*released*) dari sistem.</p>
+                <h3 style="margin: 0; color: var(--text-main); font-size: 15px;">Riwayat Force Uninstall / Perangkat Dilepas</h3>
+                <p class="muted" style="margin: 4px 0 0; font-size: 11px;">Perangkat yang dikunci melalui force uninstall atau dilepas dari sistem.</p>
               </div>
               <span id="released-device-count" class="device-limit">0 perangkat</span>
             </div>

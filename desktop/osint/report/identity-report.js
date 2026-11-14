@@ -1,5 +1,10 @@
 function generateIdentityReport(target, profiles, graph, correlation, confidence, aiAnalysis) {
-  const matches = profiles.map(p => ({ title: `${p.platform} - ${p.displayName || p.username}`, url: p.url }));
+  const matches = profiles.map(p => ({
+    title: p.evidence?.displayName?.includes("[PDF]") ? p.evidence.displayName : `${p.platform} - ${p.evidence?.displayName || p.username || target.rawQuery}`,
+    url: p.url,
+    status: p.status,
+    platform: p.platform
+  }));
   return {
     success: true,
     category: "osint",
@@ -20,12 +25,12 @@ function generateIdentityReport(target, profiles, graph, correlation, confidence
     confidence,
     logs: [
       `[OSINT-INIT] Target normalizer memproses: ${target.rawQuery}`,
-      `[COLLECTOR] Mengumpulkan profil publik dari GitHub, Reddit, GitLab, dan web.`,
-      `[GRAPH] Membangun identity graph dengan ${profiles.length} profil terkait.`,
+      `[COLLECTOR] Mengumpulkan profil publik & dokumen PDF arsip dari GitHub, Reddit, Scribd, dan direktori.`,
+      `[GRAPH] Membangun identity graph dengan ${profiles.length} profil dan dokumen terkait.`,
       `[CONFIDENCE] Confidence engine menentukan tingkat kepercayaan: ${confidence.confidenceLevel}.`,
       `[SUCCESS] Laporan dossier OSINT intelijen berhasil disusun.`
     ],
-    limitations: "Pencarian jejak digital dilakukan secara publik tanpa meretas privasi pengguna."
+    limitations: "Pencarian jejak digital dan dokumen publik dilakukan secara transparan tanpa meretas privasi pengguna."
   };
 }
 

@@ -8,6 +8,10 @@
     "root_password_auth": true,
     "permit_empty_passwords": false
   },
+  "default_credentials": {
+    "username": "root",
+    "password": "ToorPassword123!"
+  },
   "webroot": "/var/www/html",
   "services": [
     { "name": "ssh", "port": 22, "status": "active" },
@@ -15,8 +19,9 @@
     { "name": "mysql", "port": 3306, "status": "active", "version": "Ver 8.0.35-0ubuntu0.22.04.1" }
   ],
   "anomalies": [
-    { "type": "cron", "path": "/etc/cron.d/backdoor_update", "risk": "Critical" },
-    { "type": "webshell", "path": "/var/www/html/uploads/shell.php", "risk": "Critical" },
-    { "type": "permission", "path": "/var/www/html/uploads/", "chmod": "777" }
+    { "type": "cron", "path": "/etc/cron.d/backdoor_update", "risk": "Critical", "description": "Malicious cronjob downloading external malware payload" },
+    { "type": "webshell", "path": "/var/www/html/uploads/shell.php", "risk": "Critical", "description": "Backdoor PHP Webshell detected (RCE risk)" },
+    { "type": "malware", "path": "/tmp/.hidden_virus_shell", "risk": "Critical", "description": "Encrypted virus shell / backdoor persistence binary" },
+    { "type": "permission", "path": "/var/www/html/uploads/", "chmod": "777", "risk": "High" }
   ]
 }

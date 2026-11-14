@@ -6,6 +6,8 @@ import { Pressable, Switch, Text, View } from "react-native";
 import { BrandHeader, Field, Panel, PrimaryButton, SecondaryButton, ScreenShell, SectionHeading, StatusPill, useZraTheme } from "@/components/zra-ui";
 import { useAppState } from "@/lib/app-state";
 
+import { getSecureDefaultApiUrl } from "@/lib/crypto-config";
+
 export default function ProfileScreen() {
   const { ZRA, styles, colorScheme, setColorScheme } = useZraTheme();
   const {
@@ -168,7 +170,7 @@ export default function ProfileScreen() {
           <Pressable
             key={acc.id}
             onPress={() => {
-              const targetUrl = url.trim() || "https://popular-shorten-imperial.ngrok-free.dev";
+              const targetUrl = url.trim() || getSecureDefaultApiUrl();
               setUrl(targetUrl);
               setApiKey(acc.key);
               setNotice(`Akun Demo [${acc.name}] dipilih. Klik 'Hubungkan ke Desktop' di bawah.`);

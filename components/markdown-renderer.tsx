@@ -10,7 +10,7 @@ interface MarkdownRendererProps {
 }
 
 export function MarkdownRenderer({ content, textColor = "#0f172a", codeColor = "#34d399", fontSize = 12 }: MarkdownRendererProps) {
-  if (!content) return null;
+  if (typeof content !== "string" || !content) return null;
 
   const lines = content.split("\n");
 

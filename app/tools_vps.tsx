@@ -4,10 +4,11 @@ import { useRouter } from "expo-router";
 import { useState } from "react";
 import { Platform, Pressable, ScrollView, Text, View } from "react-native";
 
-import { BrandHeader, Field, Panel, PrimaryButton, SecondaryButton, ScreenShell, SectionHeading, StatusPill, useZraTheme } from "@/components/zra-ui";
-import { MarkdownRenderer } from "@/components/markdown-renderer";
+import { BrandHeader, Field, Panel, PrimaryButton, ScreenShell, SectionHeading, StatusPill, useZraTheme } from "@/components/zra-ui";
+import { AuditWriteup } from "@/components/audit-writeup";
 import { AuditHistoryList, filterAuditHistory } from "@/components/audit-history";
 import { useAppState } from "@/lib/app-state";
+import { useProgressiveReport } from "@/hooks/use-progressive-report";
 
 export default function ToolsVpsScreen() {
   const router = useRouter();
@@ -19,13 +20,15 @@ export default function ToolsVpsScreen() {
   const [vpsPort, setVpsPort] = useState("22");
   const [sshUser, setSshUser] = useState("root");
   const [sshPassword, setSshPassword] = useState("");
+  const [sshHostFingerprint, setSshHostFingerprint] = useState("");
+  const [observedHostFingerprint, setObservedHostFingerprint] = useState("");
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState("");
-  const [reportData, setReportData] = useState<any | null>(null);
+  const { report: reportData, revealReport, clearReport } = useProgressiveReport();
   const [scanProgress, setScanProgress] = useState<number | null>(null);
   const [scanPhase, setScanPhase] = useState("");
   const [terminalLogs, setTerminalLogs] = useState([
-    "[READY] VPS Scan Orchestrator Initialized.",
+    "[READY] VPS Scan Rule Engine Initialized.",
     "[IDLE] Menunggu target IP VPS untuk memulai audit...",
   ]);
   const vpsHistory = filterAuditHistory(history, "vps");
@@ -37,22 +40,26 @@ export default function ToolsVpsScreen() {
       setFeedback("Masukkan IP Address VPS / Host terlebih dahulu.");
       return;
     }
+    if (scanMode === "authenticated" && !sshPassword.trim()) {
+      setFeedback("Password SSH wajib diisi untuk mode Dengan Login.");
+      return;
+    }
+    if (scanMode === "authenticated" && !sshHostFingerprint.trim()) {
+      setFeedback("Fingerprint host SSH wajib diverifikasi sebelum mengirim password.");
+      return;
+    }
 
     setBusy(true);
-    setReportData(null);
+    setObservedHostFingerprint("");
+    clearReport();
     setFeedback(`Menjalankan VPS Security (${scanMode === "external" ? "Tanpa Login" : "Dengan Login"})...`);
-    setScanProgress(10);
+    setScanProgress(15);
     setScanPhase("Target Profiling & Access Verification...");
 
     setTerminalLogs([
-      `[00:00:01] > [TARGET] VPS Target registered: ${ip}:${vpsPort} (${sshUser})`,
-      `[00:00:02] > [MODE] Audit Mode: ${scanMode === "external" ? "Tanpa Login (Pre-Auth External)" : "Dengan Login (Post-Auth Authenticated)"}`,
-      scanMode === "authenticated" ? `[00:00:03] > [AUTH] Establishing authenticated SSH channel with provided password...` : `[00:00:03] > [SCAN] Running external port & service enumeration...`,
-      `[00:00:06] > [ASSET] Asset Discovery (interfaces, services, processes)...`,
-      `[00:00:09] > [CONFIG] Configuration Analysis (OS, runtime, packages)...`,
-      `[00:00:12] > [MALWARE] Malware & Webshell Analysis (backdoor detection, persistence)...`,
-      `[00:00:15] > [VULN] Vulnerability Detection & CVE/CWE Correlation...`,
-      `[00:00:18] > [SUCCESS] VPS Security Report successfully generated!`
+      `[INIT] VPS Target registered: ${ip}:${vpsPort} (${sshUser})`,
+      `[MODE] Audit Mode: ${scanMode === "external" ? "Tanpa Login (Pre-Auth External)" : "Dengan Login (Post-Auth Authenticated)"}`,
+      scanMode === "authenticated" ? `[AUTH] Establishing authenticated SSH channel...` : `[SCAN] Running external port & service enumeration...`,
     ]);
 
     try {
@@ -71,24 +78,27 @@ export default function ToolsVpsScreen() {
           targetIp: ip,
           port: vpsPort.trim() || "22",
           sshUser: sshUser.trim() || "root",
-          sshPassword: sshPassword.trim(),
-          scanMode,
+          sshPassword: scanMode === "authenticated" ? sshPassword : "",
+          expectedHostFingerprint: scanMode === "authenticated" ? sshHostFingerprint.trim() : "",
+          scanMode: scanMode === "authenticated" ? "internal" : "external",
         }),
       });
 
       setScanProgress(85);
-      setScanPhase("Memproses hasil temuan & bukti...");
+      setScanPhase("Memproses hasil temuan rule engine...");
 
       if (!response.ok) {
-        const errText = await response.text().catch(() => "");
-        throw new Error(`Desktop Controller mengembalikan HTTP ${response.status}: ${errText}`);
+        const errBody = await response.json().catch(() => ({}));
+        if (typeof errBody.hostFingerprint === "string") setObservedHostFingerprint(errBody.hostFingerprint);
+        throw new Error(errBody.error || `Desktop Controller mengembalikan HTTP ${response.status}.`);
       }
 
       const report = await response.json();
-      setReportData(report);
-      setScanProgress(100);
-      setScanPhase("Inspeksi VPS selesai.");
-      setFeedback(`Inspeksi VPS (${scanMode === "external" ? "Tanpa Login" : "Dengan Login"}) selesai: ${report.stats?.total || 0} temuan.`);
+      setScanProgress(90);
+      setScanPhase("Menampilkan temuan satu per satu...");
+      setFeedback(`Inspeksi VPS selesai: ${report.stats?.total || 0} temuan. Menampilkan hasil...`);
+
+      setTerminalLogs(Array.isArray(report.logs) ? report.logs : ["[DONE] Pemindaian VPS selesai."]);
 
       addHistory({
         kind: "SCAN",
@@ -98,6 +108,12 @@ export default function ToolsVpsScreen() {
         payload: { action: "scan_vps", mode: scanMode },
         result: report,
       });
+      await revealReport(report, (finding) => {
+        const title = String(finding.title || finding.check || "Temuan terkonfirmasi");
+        setTerminalLogs((current) => [...current, `[SUCCESS] ${title}`]);
+      });
+      setScanProgress(100);
+      setScanPhase("Inspeksi VPS selesai.");
     } catch (error: any) {
       const message = error instanceof Error ? error.message : "Inspeksi VPS gagal.";
       setFeedback(`Gagal menjalankan inspeksi: ${message}`);
@@ -123,7 +139,7 @@ export default function ToolsVpsScreen() {
         <BrandHeader
           eyebrow="ZRACORE / TOOLKIT"
           title="VPS &amp; Server."
-          subtitle="Inspeksi backdoor server, cronjob anomali, dan keamanan SSH."
+          subtitle="Pemeriksaan port publik atau konfigurasi dasar server melalui SSH."
         />
 
         <Panel accent>
@@ -137,7 +153,7 @@ export default function ToolsVpsScreen() {
                 <Text style={{ color: ZRA.muted, fontSize: 11, fontWeight: "600" }}>{scanMode === "external" ? "Tanpa Login (Pre-Auth)" : "Dengan Login (Post-Auth)"}</Text>
               </View>
             </View>
-            <StatusPill label="ACTIVE ENGINE" tone="mint" />
+            <StatusPill label="RULE ENGINE" tone="mint" />
           </View>
         </Panel>
 
@@ -146,7 +162,10 @@ export default function ToolsVpsScreen() {
         <Panel style={{ gap: 12 }}>
           <View style={{ flexDirection: "row", gap: 8 }}>
             <Pressable
-              onPress={() => setScanMode("external")}
+              onPress={() => {
+                setScanMode("external");
+                setSshPassword("");
+              }}
               style={{ flex: 1, padding: 12, borderRadius: 10, backgroundColor: scanMode === "external" ? ZRA.mintDim : ZRA.surface, borderWidth: 1, borderColor: scanMode === "external" ? ZRA.mint : ZRA.border, alignItems: "center" }}
             >
               <Text style={{ color: scanMode === "external" ? ZRA.mint : ZRA.text, fontWeight: "800", fontSize: 13 }}>Tanpa Login</Text>
@@ -165,7 +184,6 @@ export default function ToolsVpsScreen() {
             onChangeText={setTargetIp}
             placeholder="Contoh: 103.152.118.10"
             autoCapitalize="none"
-            keyboardType="numeric"
           />
 
           <View style={{ flexDirection: "row", gap: 10 }}>
@@ -190,21 +208,34 @@ export default function ToolsVpsScreen() {
           </View>
 
           {scanMode === "authenticated" ? (
-            <Field
-              label="Password SSH"
-              value={sshPassword}
-              onChangeText={setSshPassword}
-              placeholder="Masukkan password SSH"
-              secureTextEntry={true}
-              autoCapitalize="none"
-            />
+            <>
+              <Field
+                label="Fingerprint Host SSH (SHA256)"
+                value={sshHostFingerprint}
+                onChangeText={setSshHostFingerprint}
+                placeholder="SHA256:..."
+                hint="Ambil melalui kanal tepercaya, misalnya: ssh-keyscan -p PORT HOST | ssh-keygen -lf -. Cocokkan fingerprint sebelum memasukkan password."
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              {observedHostFingerprint ? <Text selectable style={{ color: ZRA.amber, fontSize: 11, lineHeight: 16 }}>Fingerprint yang diterima: {observedHostFingerprint}. Verifikasi secara terpisah sebelum menggunakannya.</Text> : null}
+              <Field
+                label="Password SSH"
+                value={sshPassword}
+                onChangeText={setSshPassword}
+                placeholder="Masukkan password SSH"
+                secureTextEntry={true}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+            </>
           ) : null}
 
           <PrimaryButton
-            label={busy ? "LLM Sedang Menginspeksi..." : `Mulai Inspeksi VPS (${scanMode === "external" ? "Tanpa Login" : "Dengan Login"})`}
+            label={busy ? "Rule Engine Sedang Menginspeksi..." : `Mulai Inspeksi VPS (${scanMode === "external" ? "Tanpa Login" : "Dengan Login"})`}
             icon="terminal-outline"
             onPress={() => void handleRunVpsScan()}
-            disabled={busy || !targetIp.trim()}
+            disabled={busy || !targetIp.trim() || (scanMode === "authenticated" && (!sshPassword.trim() || !sshHostFingerprint.trim()))}
           />
 
           {feedback ? (
@@ -252,13 +283,13 @@ export default function ToolsVpsScreen() {
         </View>
 
         {/* Preview log terminal untuk tampilan inspeksi server. */}
-        <SectionHeading label="Konsol Terminal Eksekusi AI" />
+        <SectionHeading label="Konsol Terminal Rule Engine" />
         <Panel style={{ gap: 10, backgroundColor: "#060a0f", borderColor: ZRA.mint, borderWidth: 1 }}>
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", borderBottomWidth: 1, borderBottomColor: "#1e293b", paddingBottom: 8 }}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
               <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: ZRA.mint }} />
               <Text style={{ color: ZRA.mint, fontSize: 11, fontWeight: "900", fontFamily: Platform.OS === "ios" ? "Courier" : "monospace" }}>
-                &gt;_ ZRACORE VPS &amp; AUTH SCANNER CONSOLE
+                &gt;_ ZRACORE VPS &amp; RULE ENGINE CONSOLE
               </Text>
             </View>
             <StatusPill label={busy ? "ANALYZING..." : "TERMINAL IDLE"} tone={busy ? "amber" : "mint"} />
@@ -270,7 +301,7 @@ export default function ToolsVpsScreen() {
                 key={lIdx}
                 selectable
                 style={{
-                  color: line.includes("SUCCESS") ? ZRA.mint : line.includes("AI-LLM") ? ZRA.amber : line.includes("INIT") ? ZRA.blue : "#34d399",
+                  color: line.includes("SUCCESS") ? ZRA.mint : line.includes("MODE") ? ZRA.amber : line.includes("INIT") ? ZRA.blue : "#34d399",
                   fontSize: 10,
                   fontFamily: Platform.OS === "ios" ? "Courier" : "monospace",
                   lineHeight: 15,
@@ -281,7 +312,7 @@ export default function ToolsVpsScreen() {
             ))}
             {busy ? (
               <Text style={{ color: ZRA.mint, fontSize: 10, fontFamily: Platform.OS === "ios" ? "Courier" : "monospace" }}>
-                &gt; VPS & Auth Orchestrator pipeline in progress... _
+                &gt; VPS Rule Engine pipeline in progress... _
               </Text>
             ) : null}
           </View>
@@ -290,25 +321,11 @@ export default function ToolsVpsScreen() {
         {/* Kartu hasil pemeriksaan yang akan menampilkan temuan server. */}
         <Panel style={{ gap: 14, backgroundColor: ZRA.surfaceRaised }}>
           <SectionHeading label="Hasil/Output" />
-          {reportData && reportData.vulnerabilities && reportData.vulnerabilities.length > 0 ? (
-            reportData.vulnerabilities.map((item: any, idx: number) => (
-              <View key={idx} style={{ padding: 12, borderRadius: 10, backgroundColor: ZRA.surface, borderWidth: 1, borderColor: ZRA.border, gap: 8 }}>
-                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                  <Text style={{ color: ZRA.text, fontSize: 13, fontWeight: "800", flex: 1 }}>{idx + 1}. {item.title || item.check}</Text>
-                  <StatusPill label={item.severity || "High"} tone={item.severity === "Critical" ? "red" : "amber"} />
-                </View>
-                <MarkdownRenderer content={item.summary || item.detail || ""} textColor={ZRA.muted} codeColor={ZRA.mint} fontSize={11} />
-              </View>
-            ))
-          ) : (
-            <Text style={{ color: ZRA.muted, fontSize: 11, fontStyle: "italic", textAlign: "center", paddingVertical: 12 }}>
-              Belum ada hasil inspeksi VPS. Silakan jalankan analisis.
-            </Text>
-          )}
+          <AuditWriteup report={reportData} showStats={false} emptyMessage="Belum ada hasil inspeksi VPS. Silakan jalankan analisis." />
         </Panel>
 
         {/* Daftar inspeksi VPS sebelumnya. */}
-        <SectionHeading label="RIWAYAT INSPEKSI VPS" />
+        <SectionHeading label="RIWAYAT INSPEKSI VPS & SERVER" />
         <AuditHistoryList items={vpsHistory} emptyMessage="Belum ada riwayat inspeksi VPS." clearLabel="Hapus Riwayat VPS" onClear={() => clearHistory("vps")} />
       </ScrollView>
     </ScreenShell>

@@ -1,0 +1,2 @@
+ZRACORE_LAB_SAFE_TEST_MARKER_TXT_2026
+Purpose: Safe non-executable test marker for file upload security testing.

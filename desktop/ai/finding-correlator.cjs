@@ -22,7 +22,7 @@ ATURAN KETAT:
         temperature: 0.0,
         max_tokens: 3072,
       }),
-      signal: AbortSignal.timeout(30_000),
+      signal: AbortSignal.timeout(8000),
     });
     const data = await res.json();
     const content = data.choices?.[0]?.message?.content || "[]";
