@@ -52,6 +52,8 @@ let windowRef;
 let config;
 let history = [];
 let chatMessages = [];
+let networkFlows = [];
+let networkFlowPublishTimer = null;
 let apiServer;
 let lastDevicePersistAt = 0;
 let lastAnomalyPersistAt = 0;
@@ -200,9 +202,37 @@ function getPublicState() {
     releasedDevices: config.releasedDevices ?? [],
     updateRelease: config.updateRelease ? { version: config.updateRelease.version, versionCode: config.updateRelease.versionCode, notes: config.updateRelease.notes, fileSize: config.updateRelease.fileSize, sha256: config.updateRelease.sha256, publishedAt: config.updateRelease.publishedAt, filename: config.updateRelease.filename } : null,
     history: history.slice(0, 100),
+    networkFlows: networkFlows.slice(0, 100),
     chatMessages: chatMessages.slice(-MAX_CHAT_ITEMS),
     apiRunning: Boolean(apiServer?.listening),
   };
+}
+
+function recordNetworkRequest(flow) {
+  const sourceKey = flow.sourceType === "app"
+    ? `app:${flow.sourceId}`
+    : `external:${flow.clientIp}:${String(flow.userAgent || "").slice(0, 80)}`;
+  const key = `${sourceKey}|${flow.host}|${flow.method}|${flow.path}`;
+  const existing = networkFlows.find((entry) => entry.key === key);
+  const next = existing
+    ? {
+        ...existing,
+        count: existing.count + 1,
+        lastSeen: flow.timestamp,
+        lastStatus: flow.status,
+        clientIp: flow.clientIp || existing.clientIp,
+        forwardedFor: flow.forwardedFor || existing.forwardedFor,
+      }
+    : { ...flow, key, sourceKey, count: 1, firstSeen: flow.timestamp, lastSeen: flow.timestamp, lastStatus: flow.status };
+
+  networkFlows = [next, ...networkFlows.filter((entry) => entry.key !== key)].slice(0, 100);
+  if (!networkFlowPublishTimer) {
+    networkFlowPublishTimer = setTimeout(() => {
+      networkFlowPublishTimer = null;
+      publishState();
+    }, 350);
+    networkFlowPublishTimer.unref?.();
+  }
 }
 
 // Beri tahu renderer bahwa konfigurasi atau status Desktop berubah.
@@ -398,6 +428,7 @@ function makeApiServer() {
       return true;
     },
     getHistory: () => history,
+    recordNetworkRequest,
     addHistoryItem: async (item) => {
       history = [item, ...history].slice(0, MAX_HISTORY_ITEMS);
       await writeJson(getHistoryPath(), persistableHistory(history));

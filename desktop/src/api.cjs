@@ -946,6 +946,7 @@ function createApiServer({
   isForcedUninstall,
   receiveAnomalyDevice,
   getHistory,
+  recordNetworkRequest,
   addHistoryItem,
   clearHistoryItems,
   domainResolvers,
@@ -965,6 +966,33 @@ function createApiServer({
     }
 
     const pathname = new URL(request.url ?? "/", "http://localhost").pathname;
+
+    // Health polling is the mobile app's regular heartbeat, so include it in the flow.
+    if (request.method !== "OPTIONS") {
+      const deviceIdHeader = request.headers["x-zra-device-id"];
+      const deviceNameHeader = request.headers["x-zra-device-name"];
+      const bearer = readBearerToken(request);
+      const activeTokens = getToken?.() ?? [];
+      const isAppClient = typeof deviceIdHeader === "string" && deviceIdHeader.trim().length >= 8 && activeTokens.includes(bearer);
+      const forwardedHeader = request.headers["x-forwarded-for"];
+      const forwardedFor = (Array.isArray(forwardedHeader) ? forwardedHeader[0] : forwardedHeader)
+        ?.split(",")[0]?.trim().slice(0, 80) || "";
+      const event = {
+        timestamp: new Date().toISOString(),
+        sourceType: isAppClient ? "app" : "external",
+        sourceId: isAppClient ? deviceIdHeader.trim().slice(0, 120) : "",
+        sourceName: isAppClient && typeof deviceNameHeader === "string" ? deviceNameHeader.trim().slice(0, 100) : "",
+        clientIp: String(request.socket.remoteAddress ?? "unknown").slice(0, 80),
+        forwardedFor,
+        userAgent: String(request.headers["user-agent"] ?? "Unknown client").slice(0, 180),
+        host: String(request.headers["x-forwarded-host"] ?? request.headers.host ?? "unknown-host").split(",")[0].trim().slice(0, 160),
+        method: String(request.method ?? "GET").slice(0, 12),
+        path: pathname.slice(0, 240),
+      };
+      response.once("finish", () => {
+        recordNetworkRequest?.({ ...event, status: response.statusCode });
+      });
+    }
 
     if (pathname === "/api/run-desktop-chrome" && request.method === "POST") {
       try {

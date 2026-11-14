@@ -27,6 +27,7 @@
         <button class="nav-button active" data-view="overview" type="button">Ringkasan</button>
         <button class="nav-button" data-view="devices" type="button">Devices <span id="device-nav-count">0</span></button>
         <button class="nav-button" data-view="live-map" type="button">Peta Live</button>
+        <button class="nav-button" data-view="network-flow" type="button">Jaringan</button>
         <button class="nav-button" data-view="chat" type="button">Chat <span id="chat-nav-count">0</span></button>
         <button class="nav-button" data-view="log" type="button">Log</button>
         <button class="nav-button" data-view="control" type="button">Control</button>
@@ -115,6 +116,30 @@
         </article>
       </section>
       </div>
+      <section id="network-flow-view" class="network-flow-view" hidden>
+        <div class="view-heading">
+          <div><p class="eyebrow">NETWORK OBSERVABILITY</p><h2>Flow jaringan.</h2></div>
+          <span id="network-device-count" class="device-limit">Menunggu trafik</span>
+        </div>
+        <p class="muted">Lihat siapa yang mengakses URL Desktop API dan endpoint mana yang digunakan, dari aplikasi mobile maupun klien di luar aplikasi.</p>
+        <div class="network-flow-metrics">
+          <article><span>Total request tercatat</span><strong id="network-request-count">0</strong></article>
+          <article><span>Sumber aplikasi</span><strong id="network-app-source-count">0</strong></article>
+          <article><span>Sumber luar aplikasi</span><strong id="network-external-source-count">0</strong></article>
+          <article><span>URL endpoint</span><strong id="network-route-count">0</strong></article>
+        </div>
+        <div id="network-flow-map" class="network-flow-map">
+          <svg id="network-flow-connections" class="network-flow-connections" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"></svg>
+          <div id="network-flow-sources" class="network-flow-layer" aria-label="Sumber klien"></div>
+          <div id="network-flow-gateway" class="network-flow-gateway"></div>
+          <div id="network-flow-routes" class="network-flow-layer" aria-label="URL dan endpoint"></div>
+        </div>
+        <div class="network-flow-footnote">Pencatatan aktif sejak Desktop API berjalan dan hanya disimpan sementara di memori. Query string, token, dan isi request tidak dicatat. IP dari header proxy ditampilkan sebagai informasi proxy dan belum diverifikasi.</div>
+        <section class="network-flow-activity">
+          <div class="list-heading"><h3>Aktivitas endpoint</h3><span id="network-flow-activity-count">0 alur</span></div>
+          <div id="network-fleet-container" class="network-flow-activity-list"></div>
+        </section>
+      </section>
       <section id="chat-view" class="chat-view" hidden>
         <div class="view-heading">
           <div><p class="eyebrow">04 / CHAT &amp; VOICE NOTE</p><h2>Chat</h2></div>

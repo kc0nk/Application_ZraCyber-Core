@@ -207,6 +207,7 @@ function renderState(state) {
   renderLogs(state);
   renderHackerC2(state);
   renderControlView(state);
+  renderNetworkFlow(state);
   if (fleetMap) renderFleetMap(state);
 }
 
@@ -2113,158 +2114,151 @@ if (triggerLockdownBtn) {
 }
 
 function renderNetworkFlow(state) {
-  const container = document.querySelector("#network-fleet-container");
-  const nodeContainer = document.querySelector("#network-node-graph-container");
-  const countEl = document.querySelector("#network-device-count");
-  if (!container || !nodeContainer) return;
+  const activity = document.querySelector("#network-fleet-container");
+  const sourcesEl = document.querySelector("#network-flow-sources");
+  const routesEl = document.querySelector("#network-flow-routes");
+  if (!activity || !sourcesEl || !routesEl) return;
 
-  const devices = [
-    ...(state.devices ?? (state.device ? [state.device] : [])),
-    ...(state.anomalousDevices ?? [])
-  ];
-  if (countEl) countEl.textContent = `${devices.length} HP Terhubung`;
-
-  // 1. Render Dynamic Node Graph Pipeline
-  const nodes = [];
-
-  const ngrokNode = makeElement("div", "", "", {
-    padding: "14px 18px", borderRadius: "12px", background: "#0f172a", border: "1px solid #3b82f6", display: "grid", gap: "4px", minWidth: "170px", textAlign: "center", boxShadow: "0 0 20px rgba(59,130,246,0.25)"
-  });
-  ngrokNode.innerHTML = `<span style="font-size: 9px; color: #93c5fd; font-weight: 800; text-transform: uppercase; letter-spacing: 1px;">Public Tunnel Entry</span><strong style="color: #ffffff; font-size: 11px; font-family: monospace;">Ngrok URL</strong><span style="font-size: 9px; color: #34d399;">Active Gateway</span>`;
-  nodes.push(ngrokNode);
-
-  nodes.push(makeElement("div", "", "➔", { color: "var(--mint)", fontSize: "18px", fontWeight: "900" }));
-
-  const desktopNode = makeElement("div", "", "", {
-    padding: "14px 18px", borderRadius: "12px", background: "#064e3b", border: "1px solid var(--mint)", display: "grid", gap: "4px", minWidth: "170px", textAlign: "center", boxShadow: "0 0 20px rgba(52,211,153,0.3)"
-  });
-  desktopNode.innerHTML = `<span style="font-size: 9px; color: #a7f3d0; font-weight: 800; text-transform: uppercase; letter-spacing: 1px;">Control Plane</span><strong style="color: #ffffff; font-size: 11px; font-family: monospace;">Desktop API (4317)</strong><span style="font-size: 9px; color: #34d399;">Orchestrator Active</span>`;
-  nodes.push(desktopNode);
-
-  if (devices.length > 0) {
-    nodes.push(makeElement("div", "", "➔", { color: "var(--mint)", fontSize: "18px", fontWeight: "900" }));
-    const branchContainer = makeElement("div", "", "", { display: "flex", flexWrap: "wrap", gap: "12px", alignItems: "center", justifyContent: "center" });
-
-    for (const d of devices) {
-      const devNode = makeElement("div", "", "", {
-        padding: "12px 16px", borderRadius: "12px", background: d.isDemo ? "#451a03" : "#0f172a", border: d.isDemo ? "1px solid #fde047" : "1px solid var(--mint)", display: "grid", gap: "4px", minWidth: "160px", textAlign: "center", boxShadow: "0 4px 15px rgba(0,0,0,0.4)"
-      });
-      devNode.innerHTML = `
-        <span style="font-size: 9px; color: ${d.isDemo ? '#fde047' : '#34d399'}; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">${d.isDemo ? 'AKUN DEMO JURI' : 'TERDAFTAR'}</span>
-        <strong style="color: #ffffff; font-size: 12px;">📱 ${d.name}</strong>
-        <span style="font-size: 10px; color: #94a3b8; font-family: monospace;">IMEI: ${d.id.slice(0, 8)}...</span>
-      `;
-      branchContainer.append(devNode);
-    }
-    nodes.push(branchContainer);
-  } else {
-    nodes.push(makeElement("div", "", "➔", { color: "var(--muted)", fontSize: "18px", fontWeight: "900" }));
-    const emptyNode = makeElement("div", "", "", {
-      padding: "14px 18px", borderRadius: "12px", background: "#0f172a", border: "1px dashed var(--border)", display: "grid", gap: "4px", minWidth: "160px", textAlign: "center"
-    });
-    emptyNode.innerHTML = `<span style="font-size: 9px; color: var(--muted); font-weight: 800;">FLEET STATUS</span><strong style="color: var(--muted); font-size: 12px;">Menunggu Koneksi HP</strong>`;
-    nodes.push(emptyNode);
+  const flows = Array.isArray(state.networkFlows) ? state.networkFlows : [];
+  const bySource = new Map();
+  const byRoute = new Map();
+  let totalRequests = 0;
+  for (const flow of flows) {
+    totalRequests += Number(flow.count) || 0;
+    if (!bySource.has(flow.sourceKey)) bySource.set(flow.sourceKey, { ...flow, count: 0 });
+    bySource.get(flow.sourceKey).count += Number(flow.count) || 0;
+    const routeKey = `${flow.host}|${flow.method}|${flow.path}`;
+    if (!byRoute.has(routeKey)) byRoute.set(routeKey, { ...flow, count: 0 });
+    byRoute.get(routeKey).count += Number(flow.count) || 0;
   }
 
-  nodeContainer.replaceChildren(...nodes);
+  const sources = [...bySource.values()].sort((a, b) => b.count - a.count);
+  const routes = [...byRoute.values()].sort((a, b) => b.count - a.count);
+  const appCount = sources.filter((item) => item.sourceType === "app").length;
+  const externalCount = sources.length - appCount;
+  const setMetric = (selector, value) => {
+    const element = document.querySelector(selector);
+    if (element) element.textContent = String(value);
+  };
+  setMetric("#network-request-count", totalRequests);
+  setMetric("#network-app-source-count", appCount);
+  setMetric("#network-external-source-count", externalCount);
+  setMetric("#network-route-count", routes.length);
 
-  // 2. Render Cyberpunk HUD Fleet Cards
-  if (devices.length === 0) {
-    container.replaceChildren(makeElement("p", "muted", "Belum ada perangkat seluler terhubung."));
+  const countEl = document.querySelector("#network-device-count");
+  if (countEl) countEl.textContent = sources.length ? `${sources.length} sumber terpantau` : "Menunggu trafik";
+  const gateway = document.querySelector("#network-flow-gateway");
+  if (gateway) gateway.replaceChildren(
+    makeElement("span", "network-node-kicker", "GATEWAY API"),
+    makeElement("strong", "", "Desktop API"),
+    makeElement("span", "network-node-detail", `HTTP · Port ${state.config?.port ?? "—"}`),
+  );
+
+  const sourceSlots = [
+    { column: 1, row: 2, x: 17, y: 50 },
+    { column: 1, row: 1, x: 17, y: 17 },
+    { column: 1, row: 3, x: 17, y: 83 },
+    { column: 2, row: 1, x: 50, y: 17 },
+  ];
+  const routeSlots = [
+    { column: 3, row: 2, x: 83, y: 50 },
+    { column: 3, row: 1, x: 83, y: 17 },
+    { column: 3, row: 3, x: 83, y: 83 },
+    { column: 2, row: 3, x: 50, y: 83 },
+  ];
+  const sourceNodes = sources.slice(0, sourceSlots.length).map((source, index) => {
+    const slot = sourceSlots[index];
+    const node = makeElement("article", `network-flow-node ${source.sourceType === "app" ? "is-app" : "is-external"}`);
+    node.style.gridColumn = String(slot.column);
+    node.style.gridRow = String(slot.row);
+    const name = source.sourceType === "app"
+      ? (source.sourceName || `Aplikasi · ${String(source.sourceId || "").slice(0, 10)}`)
+      : "Klien luar aplikasi";
+    node.append(
+      makeElement("strong", "", name),
+      makeElement("span", "network-node-detail", source.clientIp || "IP tidak tersedia"),
+      makeElement("span", "network-node-count", `${source.count} request`),
+    );
+    return node;
+  });
+  if (!sourceNodes.length) {
+    const empty = makeElement("p", "network-flow-empty", "Belum ada klien tercatat");
+    empty.style.gridColumn = "1";
+    empty.style.gridRow = "2";
+    sourceNodes.push(empty);
+  }
+  sourcesEl.replaceChildren(...sourceNodes);
+
+  const routeNodes = routes.slice(0, routeSlots.length).map((route, index) => {
+    const slot = routeSlots[index];
+    const node = makeElement("article", "network-flow-node is-route");
+    node.style.gridColumn = String(slot.column);
+    node.style.gridRow = String(slot.row);
+    node.append(
+      makeElement("strong", "network-route-host", route.host || "host tidak diketahui"),
+      makeElement("span", "network-route-path", `${route.method || "GET"} ${route.path || "/"}`),
+      makeElement("span", "network-node-count", `${route.count} request`),
+    );
+    return node;
+  });
+  if (!routeNodes.length) {
+    const empty = makeElement("p", "network-flow-empty", "Belum ada endpoint tercatat");
+    empty.style.gridColumn = "3";
+    empty.style.gridRow = "2";
+    routeNodes.push(empty);
+  }
+  routesEl.replaceChildren(...routeNodes);
+
+  const svg = document.querySelector("#network-flow-connections");
+  if (svg) {
+    const edges = [];
+    const addEdges = (items, slots, className) => {
+      items.slice(0, slots.length).forEach((_item, index) => {
+        const slot = slots[index];
+        const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+        line.setAttribute("x1", String(slot.x));
+        line.setAttribute("y1", String(slot.y));
+        line.setAttribute("x2", "50");
+        line.setAttribute("y2", "50");
+        line.setAttribute("class", className);
+        edges.push(line);
+      });
+    };
+    addEdges(sources, sourceSlots, "is-source");
+    addEdges(routes, routeSlots, "is-route");
+    svg.replaceChildren(...edges);
+  }
+
+  const activityCount = document.querySelector("#network-flow-activity-count");
+  if (activityCount) activityCount.textContent = `${flows.length} alur`;
+  if (!flows.length) {
+    activity.replaceChildren(makeElement("p", "network-flow-empty", "Belum ada request. Aktivitas akan muncul setelah klien mengakses Desktop API."));
     return;
   }
 
-  const cards = [];
-  for (const d of devices) {
-    const card = makeElement("div", "", "", {
-      background: "#090d16",
-      borderRadius: "16px",
-      border: "1px solid rgba(52, 211, 153, 0.3)",
-      padding: "20px",
-      display: "grid",
-      gridTemplateColumns: "1fr 1fr",
-      gap: "20px",
-      boxShadow: "0 8px 32px rgba(0,0,0,0.4), inset 0 0 20px rgba(52,211,153,0.03)",
-      position: "relative",
-      overflow: "hidden"
-    });
-
-    // Left HUD Column
-    const leftCol = makeElement("div", "", "", { display: "flex", flexDirection: "column", justifyContent: "space-between", gap: "14px" });
-
-    const headerRow = makeElement("div", "", "", { display: "flex", alignItems: "center", gap: "14px" });
-    const phoneIconBox = makeElement("div", "", "📱", {
-      width: "56px", height: "56px", borderRadius: "14px", background: "linear-gradient(135deg, rgba(52,211,153,0.2), rgba(59,130,246,0.2))", border: "1px solid rgba(52,211,153,0.4)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "26px", boxShadow: "0 0 15px rgba(52,211,153,0.2)"
-    });
-
-    const infoMeta = makeElement("div", "", "", { display: "grid", gap: "3px" });
-    infoMeta.append(
-      makeElement("strong", "", `${d.name} (${d.model})`, { color: "#ffffff", fontSize: "15px", fontWeight: "900", letterSpacing: "0.5px" }),
-      makeElement("span", "", `Platform: ${d.platform} · OS: ${d.osVersion}`, { color: "#94a3b8", fontSize: "11px" })
+  const cards = flows.slice(0, 100).map((flow) => {
+    const card = makeElement("article", "network-activity-card");
+    const sourceName = flow.sourceType === "app"
+      ? (flow.sourceName || `Aplikasi · ${String(flow.sourceId || "").slice(0, 10)}`)
+      : "Klien luar aplikasi";
+    const header = makeElement("div", "network-activity-heading");
+    header.append(
+      makeElement("strong", "", `${sourceName} → ${flow.host || "unknown-host"}`),
+      makeElement("span", `network-status ${Number(flow.lastStatus) >= 400 ? "is-error" : ""}`, `${flow.lastStatus ?? "—"} · ${flow.count}x`),
     );
-    headerRow.append(phoneIconBox, infoMeta);
-
-    const badgeText = d.isDemo ? "AKUN DEMO JURI" : "TERDAFTAR";
-    const badgeColor = d.isDemo ? "#fde047" : "#34d399";
-    const badgeBg = d.isDemo ? "rgba(253, 224, 71, 0.15)" : "rgba(52, 211, 153, 0.15)";
-    const badgeBorder = d.isDemo ? "1px solid rgba(253, 224, 71, 0.4)" : "1px solid rgba(52, 211, 153, 0.4)";
-    const statusBadge = makeElement("div", "", badgeText, {
-      color: badgeColor, background: badgeBg, border: badgeBorder, padding: "6px 14px", borderRadius: "8px", fontSize: "12px", fontWeight: "900", letterSpacing: "1px", width: "fit-content", boxShadow: `0 0 10px ${badgeBg}`
-    });
-
-    const imeiBox = makeElement("div", "", "", { display: "grid", gap: "6px", background: "#030712", padding: "12px 14px", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.08)" });
-    const imeiHeader = makeElement("div", "", "", { display: "flex", justifyContent: "space-between", alignItems: "center" });
-    imeiHeader.append(
-      makeElement("span", "", "IMEI / HARDWARE ID", { color: "#64748b", fontSize: "10px", fontWeight: "800", letterSpacing: "1px" })
+    card.append(
+      header,
+      makeElement("code", "network-activity-route", `${flow.method || "GET"} ${flow.path || "/"}`),
+      makeElement("p", "network-activity-meta", `IP koneksi: ${flow.clientIp || "tidak tersedia"} · Terakhir: ${formatNetworkTime(flow.lastSeen)}`),
     );
-
-    const imeiRow = makeElement("div", "", "", { display: "flex", justifyContent: "space-between", alignItems: "center", gap: "10px" });
-    const imeiText = makeElement("span", "", d.id, { color: "#34d399", fontSize: "11px", fontFamily: "monospace", fontWeight: "700" });
-
-    const copyBtn = makeElement("button", "button secondary small", "📋 Salin", { padding: "4px 10px", fontSize: "10px", fontWeight: "800", cursor: "pointer" });
-    copyBtn.type = "button";
-    copyBtn.addEventListener("click", () => {
-      void navigator.clipboard.writeText(d.id);
-      copyBtn.textContent = "✅ Tersalin!";
-      setTimeout(() => { copyBtn.textContent = "📋 Salin"; }, 2000);
-    });
-    imeiRow.append(imeiText, copyBtn);
-    imeiBox.append(imeiHeader, imeiRow);
-
-    leftCol.append(headerRow, statusBadge, imeiBox);
-
-    // Right HUD Column (Stacked Cards)
-    const rightCol = makeElement("div", "", "", { display: "grid", gap: "10px" });
-
-    const makeHudCard = (label, value, icon, isOnline = false) => {
-      const hud = makeElement("div", "", "", {
-        background: "#030712", padding: "12px 16px", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.08)", display: "flex", justifyContent: "space-between", alignItems: "center"
-      });
-      const col = makeElement("div", "", "", { display: "grid", gap: "2px" });
-      col.append(
-        makeElement("span", "", label, { color: "#64748b", fontSize: "10px", fontWeight: "800", letterSpacing: "1px" }),
-        makeElement("strong", "", value, { color: "#ffffff", fontSize: "13px", fontWeight: "800", fontFamily: label.includes("IP") ? "monospace" : "inherit" })
-      );
-      const rightIcon = makeElement("div", "", icon, { fontSize: "18px" });
-      if (isOnline) {
-        rightIcon.innerHTML = `<span style="background: rgba(52,211,153,0.15); color: #34d399; border: 1px solid rgba(52,211,153,0.4); padding: 4px 10px; borderRadius: 6px; fontSize: 10px; font-weight: 900; letter-spacing: 0.5px; box-shadow: 0 0 10px rgba(52,211,153,0.2);">ONLINE</span>`;
-      }
-      hud.append(col, rightIcon);
-      return hud;
-    };
-
-    const gpsStr = d.location ? `${d.location.latitude.toFixed(6)}, ${d.location.longitude.toFixed(6)}` : "Menunggu koordinat GPS";
-    rightCol.append(
-      makeHudCard("IP ADDRESS / TUNNEL", d.ip || "127.0.0.1", "", true),
-      makeHudCard("GPS TELEMETRI", gpsStr, "🎯"),
-      makeHudCard("AKTIVITAS AKTIF", d.activeActivity || "ZraCore Workspace", "💓")
-    );
-
-    card.append(leftCol, rightCol);
-    cards.push(card);
-  }
-  container.replaceChildren(...cards);
+    if (flow.forwardedFor) card.append(makeElement("p", "network-activity-meta", `IP dari proxy (belum diverifikasi): ${flow.forwardedFor}`));
+    if (flow.sourceType !== "app" && flow.userAgent) card.append(makeElement("p", "network-activity-meta", `User-Agent: ${flow.userAgent}`));
+    return card;
+  });
+  activity.replaceChildren(...cards);
 }
 
-
-
+function formatNetworkTime(value) {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "waktu tidak tersedia" : date.toLocaleString("id-ID");
+}
